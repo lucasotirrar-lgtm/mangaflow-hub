@@ -17,7 +17,7 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 function Home() {
-  const feature = catalog[0];
+  const feature = catalog[0]!;
   return (
     <main className="page-shell space-y-14 pb-28 lg:pb-12">
       <section className="hero-panel">
@@ -36,7 +36,8 @@ function Home() {
             <span className="age-badge">{feature.ageRating}</span>
           </div>
           <p className="text-sm font-bold text-primary">
-            {feature.sources[0].label} · {feature.kind === "manhwa" ? "Manhwa" : "Mangá"}
+            {feature.sources[0]?.label ?? "Biblioteca local"} ·{" "}
+            {feature.kind === "manhwa" ? "Manhwa" : "Mangá"}
           </p>
           <h1 className="mt-2 font-display text-4xl font-extrabold leading-none sm:text-6xl">
             {feature.title}
@@ -57,7 +58,7 @@ function Home() {
               <BookOpen />
               Continuar leitura
             </Link>
-            <Link to="/descobrir" className="secondary-button">
+            <Link to="/descobrir" search={{ age: undefined }} className="secondary-button">
               Explorar catálogo
               <ArrowRight />
             </Link>

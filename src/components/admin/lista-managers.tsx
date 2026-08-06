@@ -16,9 +16,7 @@ export function NoticiaManager() {
 
   const criar = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from("noticias")
-        .insert({ texto, sort_order: data.length });
+      const { error } = await supabase.from("noticias").insert({ texto, sort_order: data.length });
       if (error) throw error;
     },
     onSuccess: () => {

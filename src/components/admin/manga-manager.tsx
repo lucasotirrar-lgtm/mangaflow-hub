@@ -127,9 +127,7 @@ export function MangaManager() {
           }}
           className="card-surface space-y-3 p-4"
         >
-          <h3 className="font-display font-extrabold">
-            {form.id ? "Editar mangá" : "Novo mangá"}
-          </h3>
+          <h3 className="font-display font-extrabold">{form.id ? "Editar mangá" : "Novo mangá"}</h3>
           <ImageUpload
             value={form.cover_url}
             pasta="capas"

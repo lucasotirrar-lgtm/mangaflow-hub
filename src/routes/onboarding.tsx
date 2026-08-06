@@ -23,7 +23,7 @@ function Onboarding() {
           <Link to="/" className="secondary-button">
             Pular por agora
           </Link>
-          <Link to="/descobrir" className="primary-button">
+          <Link to="/descobrir" search={{ age: undefined }} className="primary-button">
             Concluir e descobrir
           </Link>
         </div>

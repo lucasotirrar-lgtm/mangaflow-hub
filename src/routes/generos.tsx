@@ -35,8 +35,7 @@ function GenerosPage() {
         <span className="text-gradient">Gêneros</span>
       </h1>
       <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-        Escolha um gênero e descubra centenas de títulos com capítulos atualizados
-        diariamente.
+        Escolha um gênero e descubra centenas de títulos com capítulos atualizados diariamente.
       </p>
 
       <div className="mt-8 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">

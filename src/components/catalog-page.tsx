@@ -7,12 +7,14 @@ import { catalog } from "@/services/catalog-service";
 export function CatalogPage({
   title = "Descobrir",
   description = "Encontre sua próxima leitura sem ficar preso a uma única fonte.",
+  initialAge = "todos",
 }: {
   title?: string;
   description?: string;
+  initialAge?: string;
 }) {
   const [kind, setKind] = useState("todos");
-  const [age, setAge] = useState("todos");
+  const [age, setAge] = useState(initialAge);
   const [status, setStatus] = useState("todos");
   const [page, setPage] = useState(1);
   const filtered = useMemo(

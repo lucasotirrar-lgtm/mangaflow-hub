@@ -79,9 +79,7 @@ function AvaliacoesPage() {
                   </span>
                   <span className="text-muted-foreground">por {r.usuario}</span>
                 </div>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  {r.texto}
-                </p>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{r.texto}</p>
               </div>
             </article>
           );

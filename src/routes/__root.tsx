@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -102,7 +103,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className="dark">
       <head>
         <HeadContent />
       </head>
@@ -116,13 +117,22 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const immersiveReader = pathname.startsWith("/ler/");
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SiteHeader />
+      {!immersiveReader && (
+        <a href="#conteudo-principal" className="skip-link">
+          Pular para o conteúdo
+        </a>
+      )}
+      {!immersiveReader && <SiteHeader />}
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
-      <SiteFooter />
+      <div id="conteudo-principal">
+        <Outlet />
+      </div>
+      {!immersiveReader && <SiteFooter />}
       <Toaster />
     </QueryClientProvider>
   );

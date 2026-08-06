@@ -2,7 +2,7 @@
 
 https://demo.templatemonster.com/pt-br/demo/319783.html
 
-quero clonar o vizual desse site mas traduzido para pt br 
+quero clonar o vizual desse site mas traduzido para pt br
 
 Apresentamos o Yae Manga House – sua solução completa para exibir conteúdo de anime, mangá e manhwa com estilo e funcionalidade. Este modelo de site, criado por especialistas, foi desenvolvido especificamente para entusiastas e criadores de quadrinhos que desejam elevar sua presença online. Com um design elegante e moderno, o Yae Manga House proporciona uma experiência de usuário intuitiva, garantindo que os visitantes possam navegar facilmente por uma extensa biblioteca de títulos. O modelo vem equipado com recursos personalizáveis, permitindo que você destaque suas obras mais queridas e engaje seu público de forma eficaz. Seja você um editor experiente ou um artista iniciante, o Yae Manga House oferece uma plataforma responsiva que se adapta perfeitamente a qualquer dispositivo. Liberte sua criatividade com amplo espaço para ilustrações, sinopses e detalhes de personagens, mantendo seu site visualmente atraente e fácil de manter. Transforme sua visão em realidade com o Yae Manga House – onde o fandom de anime e mangá encontra um design excepcional. Eleve seu conteúdo, conecte-se com sua comunidade e dê vida às suas histórias online. Comece hoje mesmo a preparar o terreno para sua jornada no mundo dos mangás!
 

@@ -6,7 +6,9 @@ import { ProductState, CatalogSkeleton } from "@/components/product-states";
 import { catalogService } from "@/services/catalog-service";
 import type { CatalogItem } from "@/types/content";
 export const Route = createFileRoute("/buscar")({
-  validateSearch: (s: Record<string, unknown>) => ({ q: typeof s.q === "string" ? s.q : "" }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    q: typeof s["q"] === "string" ? s["q"] : "",
+  }),
   component: SearchPage,
 });
 function SearchPage() {

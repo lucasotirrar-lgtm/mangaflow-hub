@@ -94,7 +94,7 @@ export function SiteHeader() {
             <button
               onClick={() => setOpen(!open)}
               aria-label="Abrir menu"
-              className="icon-button lg:hidden"
+              className="icon-button menu-button"
             >
               {open ? <X /> : <Menu />}
             </button>

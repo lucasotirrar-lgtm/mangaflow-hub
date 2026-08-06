@@ -53,7 +53,7 @@ export function MangaCard({ manga }: { manga: CatalogItem }) {
         </button>
         <button
           aria-label={`Adicionar ${manga.title} à biblioteca`}
-          className="rounded-lg p-1.5 text-muted-foreground hover:bg-surface hover:text-primary"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-surface hover:text-primary"
         >
           <BookmarkPlus className="h-4 w-4" />
         </button>
@@ -93,7 +93,7 @@ export function SectionTitle({
       {action && to && (
         <Link
           to={to}
-          className="shrink-0 text-sm font-bold text-muted-foreground hover:text-primary"
+          className="inline-flex min-h-11 shrink-0 items-center text-sm font-bold text-muted-foreground hover:text-primary"
         >
           {action} →
         </Link>

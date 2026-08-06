@@ -127,7 +127,11 @@ export const fallback = {
   ranking,
 };
 
-export function listaOuFallback(rows: MangaRow[] | undefined, campo: keyof MangaRow, padrao: Manga[]) {
+export function listaOuFallback(
+  rows: MangaRow[] | undefined,
+  campo: keyof MangaRow,
+  padrao: Manga[],
+) {
   if (!rows) return padrao;
   const filtrados = rows.filter((r) => Boolean(r[campo]));
   return filtrados.length > 0 ? filtrados.map(rowToManga) : padrao;
