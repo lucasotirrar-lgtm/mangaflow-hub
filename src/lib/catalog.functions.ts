@@ -14,3 +14,8 @@ export const searchPublicCatalog = createServerFn({ method: "POST" })
     const { searchPublicCatalog: search } = await import("./catalog-providers.server");
     return search(data.query, data.includeAdult, data.limit);
   });
+
+export const listCachedCatalog = createServerFn({ method: "GET" }).handler(async () => {
+  const { listVpsCatalog } = await import("./catalog-providers.server");
+  return listVpsCatalog();
+});

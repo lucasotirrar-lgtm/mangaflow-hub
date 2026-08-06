@@ -6,7 +6,7 @@ import cover5 from "@/assets/cover-5.jpg";
 import cover6 from "@/assets/cover-6.jpg";
 import hero1 from "@/assets/hero-1.jpg";
 import type { CatalogItem } from "@/types/content";
-import { searchPublicCatalog } from "@/lib/catalog.functions";
+import { listCachedCatalog, searchPublicCatalog } from "@/lib/catalog.functions";
 
 const chapters = (total: number) =>
   Array.from({ length: Math.min(total, 12) }, (_, i) => ({
@@ -161,6 +161,13 @@ export const catalogService = {
   },
   async list(): Promise<CatalogItem[]> {
     return catalog;
+  },
+  async discover(): Promise<CatalogItem[]> {
+    try {
+      return await listCachedCatalog();
+    } catch {
+      return catalog;
+    }
   },
   async getBySlug(slug: string): Promise<CatalogItem | undefined> {
     return catalogService.getCachedBySlug(slug);

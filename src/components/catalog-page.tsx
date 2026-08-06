@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
 import { MangaCard } from "@/components/manga-card";
 import { ProductState } from "@/components/product-states";
-import { catalog } from "@/services/catalog-service";
+import { catalog, catalogService } from "@/services/catalog-service";
 
 export function CatalogPage({
   title = "Descobrir",
@@ -17,15 +17,19 @@ export function CatalogPage({
   const [age, setAge] = useState(initialAge);
   const [status, setStatus] = useState("todos");
   const [page, setPage] = useState(1);
+  const [items, setItems] = useState(catalog);
+  useEffect(() => {
+    catalogService.discover().then(setItems);
+  }, []);
   const filtered = useMemo(
     () =>
-      catalog.filter(
+      items.filter(
         (x) =>
           (kind === "todos" || x.kind === kind) &&
           (age === "todos" || x.ageRating === age) &&
           (status === "todos" || x.status === status),
       ),
-    [kind, age, status],
+    [items, kind, age, status],
   );
   const reset = () => {
     setKind("todos");

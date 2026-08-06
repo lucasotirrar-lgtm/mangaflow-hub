@@ -14,6 +14,7 @@ type ProviderSearch = (
 ) => Promise<ProviderResult[]>;
 
 const TIMEOUT_MS = 8_000;
+const VPS_CATALOG_URL = "https://anime.vexclaud.site/api/catalog";
 
 function remoteSlug(provider: ProviderId, id: string | number) {
   return `external--${provider}--${id}`;
@@ -60,6 +61,58 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   } finally {
     clearTimeout(timer);
   }
+}
+
+type VpsCatalogEntry = {
+  source: ProviderId;
+  external_id: string;
+  title: string;
+  alternative_title?: string | null;
+  synopsis?: string | null;
+  cover_url?: string | null;
+  kind: ContentKind;
+  status?: string | null;
+  rating?: number | null;
+  year?: number | null;
+  language?: string | null;
+  genres?: string[];
+  is_adult?: number | boolean;
+};
+
+function fromVpsEntry(item: VpsCatalogEntry): CatalogItem {
+  return {
+    id: `${item.source}:${item.external_id}`,
+    slug: remoteSlug(item.source, item.external_id),
+    title: item.title,
+    ...(item.alternative_title ? { alternativeTitle: item.alternative_title } : {}),
+    synopsis: item.synopsis || "Sem sinopse disponível.",
+    cover: item.cover_url || "",
+    kind: item.kind,
+    ageRating: ageFromAdult(Boolean(item.is_adult)),
+    status: item.status?.toLowerCase().includes("complete") ? "Completo" : "Em andamento",
+    rating: item.rating || 0,
+    year: year(item.year),
+    genres: item.genres || [],
+    language: item.language || "Metadados locais",
+    latestChapter: 0,
+    sources: source(
+      item.source,
+      item.source === "jikan"
+        ? "Jikan / MyAnimeList"
+        : item.source === "anilist"
+          ? "AniList"
+          : "MangaDex",
+    ),
+    chapters: [],
+  };
+}
+
+export async function listVpsCatalog(query = "", limit = 48) {
+  type Response = { results?: VpsCatalogEntry[] };
+  const params = new URLSearchParams({ limit: String(Math.min(limit, 100)) });
+  if (query) params.set("q", query);
+  const payload = await requestJson<Response>(`${VPS_CATALOG_URL}?${params}`);
+  return (payload.results || []).map(fromVpsEntry);
 }
 
 const searchAniList: ProviderSearch = async (query, includeAdult, limit) => {
@@ -231,9 +284,10 @@ function dedupe(items: CatalogItem[]) {
 }
 
 export async function searchPublicCatalog(query: string, includeAdult: boolean, limit: number) {
-  const settled = await Promise.allSettled(
-    providers.map((provider) => provider(query, includeAdult, limit)),
-  );
+  const settled = await Promise.allSettled([
+    listVpsCatalog(query, limit),
+    ...providers.map((provider) => provider(query, includeAdult, limit)),
+  ]);
   return dedupe(
     settled.flatMap((result) => (result.status === "fulfilled" ? result.value : [])),
   ).slice(0, limit);
