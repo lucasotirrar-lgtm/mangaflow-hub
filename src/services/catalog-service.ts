@@ -6,6 +6,7 @@ import cover5 from "@/assets/cover-5.jpg";
 import cover6 from "@/assets/cover-6.jpg";
 import hero1 from "@/assets/hero-1.jpg";
 import type { CatalogItem } from "@/types/content";
+import { searchPublicCatalog } from "@/lib/catalog.functions";
 
 const chapters = (total: number) =>
   Array.from({ length: Math.min(total, 12) }, (_, i) => ({
@@ -152,22 +153,37 @@ export const catalog: CatalogItem[] = [
   },
 ];
 
+const externalCatalog = new Map<string, CatalogItem>();
+
 export const catalogService = {
+  getCachedBySlug(slug: string): CatalogItem | undefined {
+    return catalog.find((item) => item.slug === slug) ?? externalCatalog.get(slug);
+  },
   async list(): Promise<CatalogItem[]> {
     return catalog;
   },
   async getBySlug(slug: string): Promise<CatalogItem | undefined> {
-    return catalog.find((item) => item.slug === slug);
+    return catalogService.getCachedBySlug(slug);
   },
   async search(query: string): Promise<CatalogItem[]> {
     const q = query.trim().toLocaleLowerCase("pt-BR");
-    return q
-      ? catalog.filter((item) =>
-          [item.title, item.alternativeTitle, item.genres.join(" ")]
-            .filter(Boolean)
-            .some((value) => value!.toLocaleLowerCase("pt-BR").includes(q)),
-        )
-      : [];
+    if (!q) return [];
+    const local = catalog.filter((item) =>
+      [item.title, item.alternativeTitle, item.genres.join(" ")]
+        .filter(Boolean)
+        .some((value) => value!.toLocaleLowerCase("pt-BR").includes(q)),
+    );
+    try {
+      const remote = await searchPublicCatalog({ data: { query: q, includeAdult: false } });
+      remote.forEach((item) => externalCatalog.set(item.slug, item));
+      const seen = new Set(local.map((item) => item.title.toLocaleLowerCase("pt-BR")));
+      return [
+        ...local,
+        ...remote.filter((item) => !seen.has(item.title.toLocaleLowerCase("pt-BR"))),
+      ];
+    } catch {
+      return local;
+    }
   },
 };
 

@@ -1,6 +1,6 @@
 export type ContentKind = "manga" | "manhwa" | "light-novel";
 export type AgeRating = "Livre" | "14" | "16" | "18+";
-export type ProviderId = "local" | "mangadex" | "consumet" | "suwayomi" | "anilist";
+export type ProviderId = "local" | "mangadex" | "consumet" | "suwayomi" | "anilist" | "jikan";
 
 export type ContentSource = {
   id: ProviderId;

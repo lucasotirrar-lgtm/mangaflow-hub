@@ -1,11 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { BookmarkPlus, Check, ChevronRight, Languages, Play, Server, Star } from "lucide-react";
-import { catalog } from "@/services/catalog-service";
+import { catalog, catalogService } from "@/services/catalog-service";
 import { ProductState } from "@/components/product-states";
 export const Route = createFileRoute("/obra/$slug")({ component: Detail });
 function Detail() {
   const { slug } = Route.useParams();
-  const item = catalog.find((x) => x.slug === slug);
+  const item = catalog.find((x) => x.slug === slug) ?? catalogService.getCachedBySlug(slug);
   if (!item)
     return (
       <main className="page-shell">
