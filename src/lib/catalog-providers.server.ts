@@ -137,7 +137,9 @@ const searchMangaDex: ProviderSearch = async (query, includeAdult, limit) => {
   const ratings = includeAdult
     ? ["safe", "suggestive", "erotica", "pornographic"]
     : ["safe", "suggestive"];
-  const params = new URLSearchParams({ title: query, limit: String(limit), includes: "cover_art" });
+  const params = new URLSearchParams({ title: query, limit: String(limit) });
+  params.append("includes[]", "cover_art");
+  params.append("availableTranslatedLanguage[]", "pt-br");
   for (const rating of ratings) params.append("contentRating[]", rating);
   const payload = await requestJson<MangaDexResponse>(`https://api.mangadex.org/manga?${params}`);
   return (payload.data ?? []).map((item) => {
