@@ -1,7 +1,7 @@
 import type { CatalogItem } from "@/types/content";
 
 export const catalog: CatalogItem[] = [];
-const apiBase = (import.meta.env.VITE_CATALOG_API_URL || "").replace(/\/$/, "");
+const apiBase = (import.meta.env["VITE_CATALOG_API_URL"] || "").replace(/\/$/, "");
 
 async function request<T>(path: string): Promise<T> {
   const response = await fetch(`${apiBase}${path}`, { headers: { accept: "application/json" } });
