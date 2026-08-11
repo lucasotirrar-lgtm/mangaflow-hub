@@ -47,7 +47,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=dokploy-network
-      - traefik.http.routers.mangaflow-api.rule=Host(`manga.vexclaud.site`) && (PathPrefix(`/api`) || PathPrefix(`/media`))
+      - traefik.http.routers.mangaflow-api.rule=Host(`manga.vexclaud.site`) && PathPrefix(`/api`)
       - traefik.http.routers.mangaflow-api.priority=20
       - traefik.http.routers.mangaflow-api.entrypoints=websecure
       - traefik.http.routers.mangaflow-api.tls.certresolver=letsencrypt
