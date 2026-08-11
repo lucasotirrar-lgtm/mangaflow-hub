@@ -1,36 +1,38 @@
 import type { CatalogItem } from "@/types/content";
-import {
-  getPublicChapterPages,
-  getPublicWork,
-  listCachedCatalog,
-  searchPublicCatalog,
-} from "@/lib/catalog.functions";
 
-// Compatibilidade temporária para telas que serão alimentadas pelo backend.
-// Não contém obras fictícias: falhas são tratadas como estado vazio/indisponível.
 export const catalog: CatalogItem[] = [];
+
+async function request<T>(path: string): Promise<T> {
+  const response = await fetch(path, { headers: { accept: "application/json" } });
+  if (!response.ok) throw new Error(`Catálogo indisponível (${response.status})`);
+  return (await response.json()) as T;
+}
 
 export const catalogService = {
   async list(): Promise<CatalogItem[]> {
-    return listCachedCatalog();
+    return this.discover();
   },
   async discover(): Promise<CatalogItem[]> {
-    return listCachedCatalog();
+    return (await request<{ results: CatalogItem[] }>("/api/v1/catalog?limit=24")).results;
   },
   async getBySlug(slug: string): Promise<CatalogItem | undefined> {
     try {
-      return await getPublicWork({ data: { slug } });
+      return await request<CatalogItem>(`/api/v1/works/${encodeURIComponent(slug)}`);
     } catch {
       return undefined;
     }
   },
   async search(query: string): Promise<CatalogItem[]> {
-    const q = query.trim();
-    if (!q) return [];
-    return searchPublicCatalog({ data: { query: q, includeAdult: false } });
+    const term = query.trim();
+    if (!term) return [];
+    return (
+      await request<{ results: CatalogItem[] }>(`/api/v1/search?q=${encodeURIComponent(term)}`)
+    ).results;
   },
   async pages(chapterId: string) {
-    return getPublicChapterPages({ data: { chapterId } });
+    return request<{ pages: Array<{ index: number; url: string }> }>(
+      `/api/v1/chapters/${encodeURIComponent(chapterId)}/pages`,
+    );
   },
 };
 
