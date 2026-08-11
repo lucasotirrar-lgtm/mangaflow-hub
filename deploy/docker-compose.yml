@@ -4,7 +4,6 @@ services:
       context: ..
       target: web
     restart: unless-stopped
-    environment:
     depends_on:
       api:
         condition: service_healthy
