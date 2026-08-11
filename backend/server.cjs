@@ -146,7 +146,9 @@ async function storeAsset({ workId = null, chapterId = null, kind, pageIndex = n
         duplicate.internal_path,
         duplicate.mime_type,
         duplicate.byte_size,
-        sha,
+        // sha256 is unique in the initial schema. Keep the per-work/page mapping
+        // without duplicating its physical file record.
+        null,
       ],
     );
   } else {
@@ -243,35 +245,47 @@ async function syncCatalog() {
 
 async function syncChapters(work) {
   if (work.source !== "mangadex") return [];
-  const params = new URLSearchParams({ limit: "100", "order[chapter]": "desc" });
-  params.append("translatedLanguage[]", "pt-br");
-  params.append("includes[]", "scanlation_group");
-  const response = await fetch(
-    `https://api.mangadex.org/manga/${work.external_id}/feed?${params}`,
-    { signal: AbortSignal.timeout(20_000), headers: { "user-agent": "MangaFlow pessoal/1.0" } },
-  );
-  if (!response.ok) throw new Error(`Capítulos indisponíveis (${response.status})`);
-  const payload = await response.json();
-  for (const chapter of payload.data || []) {
-    const attrs = chapter.attributes || {};
-    const group =
-      (chapter.relationships || []).find((relation) => relation.type === "scanlation_group")
-        ?.attributes?.name || "Grupo não informado";
-    await run(
-      `INSERT INTO chapters (id, work_id, source, external_id, chapter_number, volume_number, title, language, published_at, scanlation_group)
+  let offset = 0;
+  let total = Infinity;
+  while (offset < total) {
+    const params = new URLSearchParams({
+      limit: "100",
+      offset: String(offset),
+      "order[chapter]": "desc",
+    });
+    params.append("translatedLanguage[]", "pt-br");
+    params.append("includes[]", "scanlation_group");
+    const response = await fetch(
+      `https://api.mangadex.org/manga/${work.external_id}/feed?${params}`,
+      { signal: AbortSignal.timeout(20_000), headers: { "user-agent": "MangaFlow pessoal/1.0" } },
+    );
+    if (!response.ok) throw new Error(`Capítulos indisponíveis (${response.status})`);
+    const payload = await response.json();
+    const chapters = payload.data || [];
+    for (const chapter of chapters) {
+      const attrs = chapter.attributes || {};
+      const group =
+        (chapter.relationships || []).find((relation) => relation.type === "scanlation_group")
+          ?.attributes?.name || "Grupo não informado";
+      await run(
+        `INSERT INTO chapters (id, work_id, source, external_id, chapter_number, volume_number, title, language, published_at, scanlation_group)
        VALUES (?, ?, 'mangadex', ?, ?, ?, ?, 'pt-BR', ?, ?)
        ON CONFLICT(external_id) DO UPDATE SET chapter_number=excluded.chapter_number, volume_number=excluded.volume_number, title=excluded.title, published_at=excluded.published_at, scanlation_group=excluded.scanlation_group, updated_at=CURRENT_TIMESTAMP`,
-      [
-        stableId("chapter", chapter.id),
-        work.id,
-        chapter.id,
-        attrs.chapter || null,
-        attrs.volume || null,
-        attrs.title || `Capítulo ${attrs.chapter || "?"}`,
-        attrs.publishAt || null,
-        group,
-      ],
-    );
+        [
+          stableId("chapter", chapter.id),
+          work.id,
+          chapter.id,
+          attrs.chapter || null,
+          attrs.volume || null,
+          attrs.title || `Capítulo ${attrs.chapter || "?"}`,
+          attrs.publishAt || null,
+          group,
+        ],
+      );
+    }
+    offset += chapters.length;
+    total = Number(payload.total || offset);
+    if (!chapters.length) break;
   }
   return all(
     "SELECT * FROM chapters WHERE work_id = ? AND language = ? ORDER BY CAST(chapter_number AS REAL) DESC, published_at DESC",
