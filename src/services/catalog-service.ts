@@ -1,9 +1,10 @@
 import type { CatalogItem } from "@/types/content";
 
 export const catalog: CatalogItem[] = [];
+const apiBase = (import.meta.env.VITE_CATALOG_API_URL || "").replace(/\/$/, "");
 
 async function request<T>(path: string): Promise<T> {
-  const response = await fetch(path, { headers: { accept: "application/json" } });
+  const response = await fetch(`${apiBase}${path}`, { headers: { accept: "application/json" } });
   if (!response.ok) throw new Error(`Catálogo indisponível (${response.status})`);
   return (await response.json()) as T;
 }

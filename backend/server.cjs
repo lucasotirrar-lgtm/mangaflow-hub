@@ -18,6 +18,17 @@ const allowedImageTypes = new Set(["image/jpeg", "image/png", "image/webp", "ima
 const allowedHosts = new Set(["uploads.mangadex.org", "s4.anilist.co", "api.mangadex.org"]);
 
 app.disable("x-powered-by");
+app.use((req, res, next) => {
+  const origin = req.get("origin") || "";
+  if (/^https:\/\/[^/]+\.vercel\.app$/i.test(origin) || origin === "https://manga.vexclaud.site") {
+    res.set("Access-Control-Allow-Origin", origin);
+    res.set("Vary", "Origin");
+  }
+  res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type, X-Admin-Token");
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
 app.use(express.json({ limit: "32kb" }));
 app.use((req, res, next) => {
   res.set({
