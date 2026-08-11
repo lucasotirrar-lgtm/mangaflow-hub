@@ -16,7 +16,7 @@ services:
       - traefik.http.routers.mangaflow-web.rule=Host(`manga.vexclaud.site`)
       - traefik.http.routers.mangaflow-web.entrypoints=websecure
       - traefik.http.routers.mangaflow-web.tls.certresolver=letsencrypt
-      - traefik.http.services.mangaflow-web.loadbalancer.server.port=80
+      - traefik.http.services.mangaflow-web.loadbalancer.server.port=3000
   api:
     build:
       context: ..

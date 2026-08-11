@@ -5,10 +5,12 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM nginx:1.27-alpine AS web
-COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/.output/public /usr/share/nginx/html
-EXPOSE 80
+FROM node:24-bookworm-slim AS web
+WORKDIR /app
+ENV NODE_ENV=production PORT=3000
+COPY --from=build /app/.output ./.output
+EXPOSE 3000
+CMD ["node", ".output/server/index.mjs"]
 
 FROM node:24-bookworm-slim AS api
 WORKDIR /app
