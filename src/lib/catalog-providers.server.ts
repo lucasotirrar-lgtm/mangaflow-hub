@@ -1,298 +1,76 @@
-import type {
-  AgeRating,
-  CatalogItem,
-  ContentKind,
-  ContentSource,
-  ProviderId,
-} from "@/types/content";
+import type { CatalogItem, ContentKind } from "@/types/content";
 
-type ProviderResult = CatalogItem;
-type ProviderSearch = (
-  query: string,
-  includeAdult: boolean,
-  limit: number,
-) => Promise<ProviderResult[]>;
+const TIMEOUT_MS = 12_000;
+const API_URL = (process.env["MANGAFLOW_API_URL"] || "http://api:3100").replace(/\/$/, "");
 
-const TIMEOUT_MS = 8_000;
-const VPS_CATALOG_URL = "https://anime.vexclaud.site/api/catalog";
+type ApiChapter = {
+  id: string;
+  number: number;
+  title: string;
+  language: string;
+  releasedAt: string;
+  scanlationGroup?: string;
+};
 
-function remoteSlug(provider: ProviderId, id: string | number) {
-  return `external--${provider}--${id}`;
-}
+type ApiWork = {
+  id: string;
+  slug: string;
+  title: string;
+  alternativeTitle?: string;
+  synopsis: string;
+  cover: string;
+  kind: ContentKind;
+  ageRating: "Livre" | "14" | "16" | "18+";
+  status: "Em andamento" | "Completo" | "Hiato";
+  rating: number;
+  year: number;
+  genres: string[];
+  language: string;
+  latestChapter: number;
+  sources: CatalogItem["sources"];
+  chapters: ApiChapter[];
+};
 
-function source(id: ProviderId, label: string): ContentSource[] {
-  return [{ id, label, role: "metadata", available: true }];
-}
-
-function localize(values: Record<string, string> | undefined, fallback = "Sem sinopse") {
-  if (!values) return fallback;
-  return (
-    values["pt-br"] ||
-    values["pt"] ||
-    values["en"] ||
-    values["ja-ro"] ||
-    Object.values(values)[0] ||
-    fallback
-  );
-}
-
-function year(value: string | number | null | undefined) {
-  const result = Number(value);
-  return Number.isFinite(result) && result > 0 ? result : new Date().getFullYear();
-}
-
-function kindFromLanguage(language: string | undefined): ContentKind {
-  if (language === "ko") return "manhwa";
-  if (language === "ja" || language === "zh") return "manga";
-  return "light-novel";
-}
-
-function ageFromAdult(adult: boolean): AgeRating {
-  return adult ? "18+" : "14";
-}
-
-async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const response = await fetch(url, { ...init, signal: controller.signal });
-    if (!response.ok) throw new Error(`Provider HTTP ${response.status}`);
+    const response = await fetch(`${API_URL}${path}`, { signal: controller.signal });
+    if (!response.ok) throw new Error(`MangaFlow API HTTP ${response.status}`);
     return (await response.json()) as T;
   } finally {
     clearTimeout(timer);
   }
 }
 
-type VpsCatalogEntry = {
-  source: ProviderId;
-  external_id: string;
-  title: string;
-  alternative_title?: string | null;
-  synopsis?: string | null;
-  cover_url?: string | null;
-  kind: ContentKind;
-  status?: string | null;
-  rating?: number | null;
-  year?: number | null;
-  language?: string | null;
-  genres?: string[];
-  is_adult?: number | boolean;
-};
-
-function fromVpsEntry(item: VpsCatalogEntry): CatalogItem {
+function mapWork(work: ApiWork): CatalogItem {
   return {
-    id: `${item.source}:${item.external_id}`,
-    slug: remoteSlug(item.source, item.external_id),
-    title: item.title,
-    ...(item.alternative_title ? { alternativeTitle: item.alternative_title } : {}),
-    synopsis: item.synopsis || "Sem sinopse disponível.",
-    cover: item.cover_url || "",
-    kind: item.kind,
-    ageRating: ageFromAdult(Boolean(item.is_adult)),
-    status: item.status?.toLowerCase().includes("complete") ? "Completo" : "Em andamento",
-    rating: item.rating || 0,
-    year: year(item.year),
-    genres: item.genres || [],
-    language: item.language || "Metadados locais",
-    latestChapter: 0,
-    sources: source(
-      item.source,
-      item.source === "jikan"
-        ? "Jikan / MyAnimeList"
-        : item.source === "anilist"
-          ? "AniList"
-          : "MangaDex",
-    ),
-    chapters: [],
+    ...work,
+    kind: work.kind,
+    chapters: work.chapters.map((chapter) => ({ ...chapter, read: false })),
   };
 }
 
-export async function listVpsCatalog(query = "", limit = 48) {
-  type Response = { results?: VpsCatalogEntry[] };
-  const params = new URLSearchParams({ limit: String(Math.min(limit, 100)) });
-  if (query) params.set("q", query);
-  const payload = await requestJson<Response>(`${VPS_CATALOG_URL}?${params}`);
-  return (payload.results || []).map(fromVpsEntry);
-}
-
-const searchAniList: ProviderSearch = async (query, includeAdult, limit) => {
-  type AniListResponse = {
-    data?: {
-      Page?: {
-        media?: Array<{
-          id: number;
-          title?: Record<string, string>;
-          description?: string | null;
-          coverImage?: { extraLarge?: string; large?: string };
-          format?: string | null;
-          status?: string | null;
-          averageScore?: number | null;
-          startDate?: { year?: number | null };
-          genres?: string[];
-          chapters?: number | null;
-          isAdult?: boolean;
-        }>;
-      };
-    };
-  };
-  const payload = await requestJson<AniListResponse>("https://graphql.anilist.co", {
-    method: "POST",
-    headers: { "content-type": "application/json", accept: "application/json" },
-    body: JSON.stringify({
-      query: `query ($search: String, $perPage: Int, $isAdult: Boolean) {
-        Page(page: 1, perPage: $perPage) {
-          media(search: $search, type: MANGA, isAdult: $isAdult) {
-            id title { romaji english native } description coverImage { extraLarge large }
-            format status averageScore startDate { year } genres chapters isAdult
-          }
-        }
-      }`,
-      variables: { search: query, perPage: limit, isAdult: includeAdult },
-    }),
-  });
-  return (payload.data?.Page?.media ?? []).map((item) => ({
-    id: `anilist:${item.id}`,
-    slug: remoteSlug("anilist", item.id),
-    title: localize(item.title, "Título sem nome"),
-    ...(item.title?.["native"] ? { alternativeTitle: item.title["native"] } : {}),
-    synopsis: item.description?.replace(/<[^>]+>/g, "") || "Sem sinopse disponível.",
-    cover: item.coverImage?.extraLarge || item.coverImage?.large || "",
-    kind: item.format === "NOVEL" ? "light-novel" : "manga",
-    ageRating: ageFromAdult(Boolean(item.isAdult)),
-    status: item.status === "FINISHED" ? "Completo" : "Em andamento",
-    rating: Math.max(0, (item.averageScore ?? 0) / 20),
-    year: year(item.startDate?.year),
-    genres: item.genres ?? [],
-    language: "Metadados globais",
-    latestChapter: item.chapters ?? 0,
-    sources: source("anilist", "AniList"),
-    chapters: [],
-  }));
-};
-
-const searchMangaDex: ProviderSearch = async (query, includeAdult, limit) => {
-  type MangaDexResponse = {
-    data?: Array<{
-      id: string;
-      attributes?: {
-        title?: Record<string, string>;
-        altTitles?: Array<Record<string, string>>;
-        description?: Record<string, string>;
-        originalLanguage?: string;
-        contentRating?: "safe" | "suggestive" | "erotica" | "pornographic";
-        status?: "ongoing" | "completed" | "hiatus" | "cancelled";
-        year?: number;
-        tags?: Array<{ attributes?: { name?: Record<string, string> } }>;
-      };
-      relationships?: Array<{ type: string; attributes?: { fileName?: string } }>;
-    }>;
-  };
-  const ratings = includeAdult
-    ? ["safe", "suggestive", "erotica", "pornographic"]
-    : ["safe", "suggestive"];
-  const params = new URLSearchParams({ title: query, limit: String(limit) });
-  params.append("includes[]", "cover_art");
-  params.append("availableTranslatedLanguage[]", "pt-br");
-  for (const rating of ratings) params.append("contentRating[]", rating);
-  const payload = await requestJson<MangaDexResponse>(`https://api.mangadex.org/manga?${params}`);
-  return (payload.data ?? []).map((item) => {
-    const attrs = item.attributes;
-    const cover = item.relationships?.find((relationship) => relationship.type === "cover_art")
-      ?.attributes?.fileName;
-    const adult = attrs?.contentRating === "erotica" || attrs?.contentRating === "pornographic";
-    return {
-      id: `mangadex:${item.id}`,
-      slug: remoteSlug("mangadex", item.id),
-      title: localize(attrs?.title, "Título sem nome"),
-      ...(attrs?.altTitles?.map((title) => localize(title, "")).find(Boolean)
-        ? { alternativeTitle: attrs.altTitles.map((title) => localize(title, "")).find(Boolean)! }
-        : {}),
-      synopsis: localize(attrs?.description),
-      cover: cover ? `https://uploads.mangadex.org/covers/${item.id}/${cover}` : "",
-      kind: kindFromLanguage(attrs?.originalLanguage),
-      ageRating: ageFromAdult(adult),
-      status:
-        attrs?.status === "completed"
-          ? "Completo"
-          : attrs?.status === "hiatus"
-            ? "Hiato"
-            : "Em andamento",
-      rating: 0,
-      year: year(attrs?.year),
-      genres: (attrs?.tags ?? []).map((tag) => localize(tag.attributes?.name, "")).filter(Boolean),
-      language: "Português (BR) quando disponível",
-      latestChapter: 0,
-      sources: source("mangadex", "MangaDex"),
-      chapters: [],
-    };
-  });
-};
-
-const searchJikan: ProviderSearch = async (query, includeAdult, limit) => {
-  if (includeAdult) return [];
-  type JikanResponse = {
-    data?: Array<{
-      mal_id: number;
-      title: string;
-      title_japanese?: string;
-      synopsis?: string | null;
-      images?: { jpg?: { large_image_url?: string; image_url?: string } };
-      type?: string;
-      status?: string;
-      score?: number | null;
-      published?: { from?: string | null };
-      genres?: Array<{ name: string }>;
-      chapters?: number | null;
-    }>;
-  };
-  const payload = await requestJson<JikanResponse>(
-    `https://api.jikan.moe/v4/manga?${new URLSearchParams({ q: query, limit: String(limit), sfw: "true" })}`,
+export async function listVpsCatalog(_query = "", limit = 24) {
+  const payload = await request<{ results: ApiWork[] }>(
+    `/api/v1/catalog?limit=${Math.min(limit, 48)}`,
   );
-  return (payload.data ?? []).map((item) => ({
-    id: `jikan:${item.mal_id}`,
-    slug: remoteSlug("jikan", item.mal_id),
-    title: item.title,
-    ...(item.title_japanese ? { alternativeTitle: item.title_japanese } : {}),
-    synopsis: item.synopsis || "Sem sinopse disponível.",
-    cover: item.images?.jpg?.large_image_url || item.images?.jpg?.image_url || "",
-    kind: item.type === "Light Novel" || item.type === "Novel" ? "light-novel" : "manga",
-    ageRating: "14",
-    status: item.status?.toLowerCase().includes("finished") ? "Completo" : "Em andamento",
-    rating: item.score ?? 0,
-    year: year(item.published?.from?.slice(0, 4)),
-    genres: (item.genres ?? []).map((genre) => genre.name),
-    language: "Metadados globais",
-    latestChapter: item.chapters ?? 0,
-    sources: source("jikan", "Jikan / MyAnimeList"),
-    chapters: [],
-  }));
-};
-
-const providers: ProviderSearch[] = [searchMangaDex, searchAniList, searchJikan];
-
-function dedupe(items: CatalogItem[]) {
-  const seen = new Set<string>();
-  return items.filter((item) => {
-    const key = item.title
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  return payload.results.map(mapWork);
 }
 
-export async function searchPublicCatalog(query: string, includeAdult: boolean, limit: number) {
-  const settled = await Promise.allSettled([
-    listVpsCatalog(query, limit),
-    ...providers.map((provider) => provider(query, includeAdult, limit)),
-  ]);
-  return dedupe(
-    settled.flatMap((result) => (result.status === "fulfilled" ? result.value : [])),
-  ).slice(0, limit);
+export async function searchPublicCatalog(query: string, includeAdult: boolean, _limit = 24) {
+  const payload = await request<{ results: ApiWork[] }>(
+    `/api/v1/search?q=${encodeURIComponent(query)}&adult=${includeAdult}`,
+  );
+  return payload.results.map(mapWork);
 }
 
-export function isExternalSlug(slug: string) {
-  return /^external--(?:anilist|mangadex|jikan)--.+$/.test(slug);
+export async function getCatalogWork(slug: string) {
+  return mapWork(await request<ApiWork>(`/api/v1/works/${encodeURIComponent(slug)}`));
+}
+
+export async function getChapterPages(chapterId: string) {
+  return request<{ pages: Array<{ index: number; url: string }> }>(
+    `/api/v1/chapters/${encodeURIComponent(chapterId)}/pages`,
+  );
 }

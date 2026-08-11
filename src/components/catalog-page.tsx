@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
 import { MangaCard } from "@/components/manga-card";
-import { ProductState } from "@/components/product-states";
-import { catalog, catalogService } from "@/services/catalog-service";
+import { CatalogSkeleton, ProductState } from "@/components/product-states";
+import { catalogService } from "@/services/catalog-service";
+import type { CatalogItem } from "@/types/content";
 
 export function CatalogPage({
   title = "Descobrir",
-  description = "Encontre sua próxima leitura sem ficar preso a uma única fonte.",
+  description = "Encontre sua próxima leitura em português do Brasil.",
   initialAge = "todos",
 }: {
   title?: string;
@@ -16,18 +17,25 @@ export function CatalogPage({
   const [kind, setKind] = useState("todos");
   const [age, setAge] = useState(initialAge);
   const [status, setStatus] = useState("todos");
-  const [page, setPage] = useState(1);
-  const [items, setItems] = useState(catalog);
+  const [items, setItems] = useState<CatalogItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+
   useEffect(() => {
-    catalogService.discover().then(setItems);
+    catalogService
+      .discover()
+      .then(setItems)
+      .catch(() => setFailed(true))
+      .finally(() => setLoading(false));
   }, []);
+
   const filtered = useMemo(
     () =>
       items.filter(
-        (x) =>
-          (kind === "todos" || x.kind === kind) &&
-          (age === "todos" || x.ageRating === age) &&
-          (status === "todos" || x.status === status),
+        (item) =>
+          (kind === "todos" || item.kind === kind) &&
+          (age === "todos" || item.ageRating === age) &&
+          (status === "todos" || item.status === status),
       ),
     [items, kind, age, status],
   );
@@ -36,6 +44,7 @@ export function CatalogPage({
     setAge("todos");
     setStatus("todos");
   };
+
   return (
     <main className="page-shell pb-28">
       <div className="page-heading">
@@ -48,7 +57,9 @@ export function CatalogPage({
           <p>{description}</p>
         </div>
         <span className="result-count">
-          {filtered.length} {filtered.length === 1 ? "obra" : "obras"}
+          {loading
+            ? "Carregando"
+            : `${filtered.length} ${filtered.length === 1 ? "obra" : "obras"}`}
         </span>
       </div>
       <div className="filter-bar">
@@ -93,21 +104,25 @@ export function CatalogPage({
           </button>
         )}
       </div>
-      {filtered.length ? (
-        <>
-          <div className="catalog-grid mt-8">
-            {filtered.map((item) => (
-              <MangaCard key={item.id} manga={item} />
-            ))}
-          </div>
-          <nav aria-label="Paginação" className="pagination">
-            <button disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
-              Anterior
+      {loading ? (
+        <div className="mt-8">
+          <CatalogSkeleton />
+        </div>
+      ) : failed ? (
+        <ProductState
+          state="error"
+          action={
+            <button onClick={() => window.location.reload()} className="secondary-button">
+              Tentar novamente
             </button>
-            <span>Página {page} de 1</span>
-            <button disabled>Próxima</button>
-          </nav>
-        </>
+          }
+        />
+      ) : filtered.length ? (
+        <div className="catalog-grid mt-8">
+          {filtered.map((item) => (
+            <MangaCard key={item.id} manga={item} />
+          ))}
+        </div>
       ) : (
         <ProductState
           state="no-results"
@@ -121,6 +136,7 @@ export function CatalogPage({
     </main>
   );
 }
+
 function Filter({
   label,
   value,
@@ -129,16 +145,16 @@ function Filter({
 }: {
   label: string;
   value: string;
-  set: (v: string) => void;
+  set: (value: string) => void;
   options: string[][];
 }) {
   return (
     <label>
       <span>{label}</span>
-      <select value={value} onChange={(e) => set(e.target.value)}>
-        {options.map(([value, label]) => (
-          <option key={value} value={value}>
-            {label}
+      <select value={value} onChange={(event) => set(event.target.value)}>
+        {options.map(([optionValue, optionLabel]) => (
+          <option key={optionValue} value={optionValue}>
+            {optionLabel}
           </option>
         ))}
       </select>

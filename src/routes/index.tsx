@@ -1,43 +1,66 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, BookOpen, Clock3, Database, Sparkles, Star } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowRight, BookOpen, Database, Sparkles, Star } from "lucide-react";
 import { MangaCard, SectionTitle } from "@/components/manga-card";
-import { catalog } from "@/services/catalog-service";
+import { CatalogSkeleton, ProductState } from "@/components/product-states";
+import { catalogService } from "@/services/catalog-service";
+import type { CatalogItem } from "@/types/content";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Yae House — Seu universo de mangás e novels" },
+      { title: "Yae House — Mangás em português" },
       {
         name: "description",
-        content:
-          "Catálogo pessoal de mangás, manhwas e light novels com leitura e progresso sincronizados.",
+        content: "Catálogo de mangás e manhwas em português do Brasil, com leitura progressiva.",
       },
     ],
   }),
   component: Home,
 });
+
 function Home() {
-  const feature = catalog[0]!;
+  const [items, setItems] = useState<CatalogItem[]>([]);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    catalogService
+      .discover()
+      .then(setItems)
+      .catch(() => setFailed(true));
+  }, []);
+  if (!items.length)
+    return (
+      <main className="page-shell py-12">
+        {failed ? (
+          <ProductState
+            state="error"
+            action={
+              <button className="secondary-button" onClick={() => window.location.reload()}>
+                Tentar novamente
+              </button>
+            }
+          />
+        ) : (
+          <CatalogSkeleton />
+        )}
+      </main>
+    );
+  const feature = items[0]!;
   return (
     <main className="page-shell space-y-14 pb-28 lg:pb-12">
       <section className="hero-panel">
-        <img
-          src={feature.hero || feature.cover}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover"
-        />
+        <img src={feature.cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-r from-background via-background/90 to-transparent" />
         <div className="relative z-10 flex min-h-[430px] max-w-2xl flex-col justify-end p-6 sm:min-h-[520px] sm:p-10">
           <div className="mb-auto flex flex-wrap gap-2">
             <span className="eyebrow">
               <Sparkles />
-              Destaque da semana
+              Destaque em português
             </span>
             <span className="age-badge">{feature.ageRating}</span>
           </div>
           <p className="text-sm font-bold text-primary">
-            {feature.sources[0]?.label ?? "Biblioteca local"} ·{" "}
-            {feature.kind === "manhwa" ? "Manhwa" : "Mangá"}
+            {feature.sources[0]?.label} · {feature.kind === "manhwa" ? "Manhwa" : "Mangá"}
           </p>
           <h1 className="mt-2 font-display text-4xl font-extrabold leading-none sm:text-6xl">
             {feature.title}
@@ -51,12 +74,12 @@ function Home() {
               {feature.rating}
             </span>
             <span>{feature.status}</span>
-            <span>Cap. {feature.latestChapter}</span>
+            {feature.latestChapter > 0 && <span>Cap. {feature.latestChapter}</span>}
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link to="/obra/$slug" params={{ slug: feature.slug }} className="primary-button">
               <BookOpen />
-              Continuar leitura
+              Ver obra
             </Link>
             <Link to="/descobrir" search={{ age: undefined }} className="secondary-button">
               Explorar catálogo
@@ -67,31 +90,20 @@ function Home() {
       </section>
       <section>
         <SectionTitle action="Ver catálogo" to="/mangas">
-          Continue de onde parou
+          Novidades em PT-BR
         </SectionTitle>
         <div className="catalog-grid">
-          {catalog
-            .filter((x) => x.progress)
-            .slice(0, 4)
-            .map((item) => (
-              <MangaCard key={item.id} manga={item} />
-            ))}
+          {items.slice(0, 4).map((item) => (
+            <MangaCard key={item.id} manga={item} />
+          ))}
         </div>
       </section>
-      <section className="grid gap-4 md:grid-cols-3">
-        <Link to="/biblioteca" className="quick-card">
+      <section className="grid gap-4 md:grid-cols-2">
+        <Link to="/buscar" search={{ q: "" }} className="quick-card">
           <BookOpen />
           <div>
-            <strong>Sua biblioteca</strong>
-            <span>3 obras em andamento</span>
-          </div>
-          <ArrowRight />
-        </Link>
-        <Link to="/historico" className="quick-card">
-          <Clock3 />
-          <div>
-            <strong>Histórico de leitura</strong>
-            <span>Retome os capítulos recentes</span>
+            <strong>Buscar no catálogo</strong>
+            <span>Obras e capítulos em português</span>
           </div>
           <ArrowRight />
         </Link>
@@ -99,17 +111,17 @@ function Home() {
           <Database />
           <div>
             <strong>Fontes conectadas</strong>
-            <span>3 ativas · 1 indisponível</span>
+            <span>Atualização automática e cache próprio</span>
           </div>
           <ArrowRight />
         </Link>
       </section>
       <section>
         <SectionTitle action="Descobrir mais" to="/descobrir">
-          Em alta agora
+          Catálogo atualizado
         </SectionTitle>
         <div className="catalog-grid">
-          {catalog.map((item) => (
+          {items.slice(4, 12).map((item) => (
             <MangaCard key={item.id} manga={item} />
           ))}
         </div>
@@ -119,7 +131,7 @@ function Home() {
           <span className="age-badge adult">18+</span>
           <h2 className="mt-3 font-display text-2xl font-extrabold">Espaço adulto separado</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Obras maduras aparecem identificadas e exigem confirmação explícita antes do acesso.
+            Conteúdo maduro permanece identificado e protegido.
           </p>
         </div>
         <Link to="/descobrir" search={{ age: "18+" }} className="secondary-button">

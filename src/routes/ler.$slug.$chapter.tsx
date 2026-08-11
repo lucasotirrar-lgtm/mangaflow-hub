@@ -1,12 +1,31 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { ArrowLeft, ChevronLeft, ChevronRight, Maximize, Settings2 } from "lucide-react";
-import { catalog } from "@/services/catalog-service";
+import { catalogService } from "@/services/catalog-service";
+
 export const Route = createFileRoute("/ler/$slug/$chapter")({ component: Reader });
+
 function Reader() {
   const { slug, chapter } = Route.useParams();
-  const item = catalog.find((x) => x.slug === slug);
-  if (!item) return null;
-  const n = Number(chapter);
+  const [title, setTitle] = useState("");
+  const [chapterNumber, setChapterNumber] = useState("");
+  const [pages, setPages] = useState<Array<{ index: number; url: string }>>([]);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    catalogService
+      .getBySlug(slug)
+      .then(async (work) => {
+        const selected = work?.chapters.find((item) => item.id === chapter);
+        if (!work || !selected) throw new Error("Capítulo não encontrado");
+        setTitle(work.title);
+        setChapterNumber(String(selected.number));
+        const result = await catalogService.pages(chapter);
+        setPages(result.pages);
+      })
+      .catch((reason) =>
+        setError(reason instanceof Error ? reason.message : "Não foi possível carregar o capítulo"),
+      );
+  }, [chapter, slug]);
   return (
     <main className="reader">
       <div className="reader-bar">
@@ -14,47 +33,53 @@ function Reader() {
           <ArrowLeft />
         </Link>
         <div>
-          <strong>{item.title}</strong>
-          <span>Capítulo {chapter}</span>
+          <strong>{title || "Carregando capítulo"}</strong>
+          <span>{chapterNumber ? `Capítulo ${chapterNumber}` : ""}</span>
         </div>
         <div className="ml-auto flex gap-1">
           <button aria-label="Preferências de leitura">
             <Settings2 />
           </button>
-          <button aria-label="Tela cheia">
+          <button
+            aria-label="Tela cheia"
+            onClick={() => document.documentElement.requestFullscreen?.()}
+          >
             <Maximize />
           </button>
         </div>
       </div>
       <div className="reader-content">
-        <div className="reader-placeholder">
-          <span>Página 1</span>
-          <h1>Leitor preparado para o backend</h1>
-          <p>
-            As imagens ou páginas de texto serão entregues pelo servidor, armazenadas localmente
-            quando permitido e carregadas progressivamente.
-          </p>
-        </div>
-        <div className="reader-placeholder second">
-          <span>Página 2</span>
-          <p>
-            Área reservada ao conteúdo do capítulo — sem URLs de provedores hardcoded no navegador.
-          </p>
-        </div>
+        {error ? (
+          <div className="reader-placeholder">
+            <h1>Capítulo indisponível</h1>
+            <p>{error}</p>
+          </div>
+        ) : pages.length ? (
+          pages.map((page) => (
+            <img
+              key={page.index}
+              src={page.url}
+              alt={`Página ${page.index + 1}`}
+              loading={page.index < 2 ? "eager" : "lazy"}
+              className="mx-auto block max-w-full"
+            />
+          ))
+        ) : (
+          <div className="reader-placeholder">
+            <span>CARREGANDO</span>
+            <h1>Preparando páginas em português</h1>
+            <p>As páginas são salvas no servidor antes de serem exibidas.</p>
+          </div>
+        )}
       </div>
       <div className="reader-nav">
-        <Link to="/ler/$slug/$chapter" params={{ slug, chapter: String(Math.max(1, n - 1)) }}>
+        <Link to="/obra/$slug" params={{ slug }}>
           <ChevronLeft />
-          Anterior
+          Voltar à obra
         </Link>
-        <span>
-          {n} / {item.latestChapter}
-        </span>
-        <Link
-          to="/ler/$slug/$chapter"
-          params={{ slug, chapter: String(Math.min(item.latestChapter, n + 1)) }}
-        >
-          Próximo
+        <span>{pages.length ? `${pages.length} páginas` : ""}</span>
+        <Link to="/obra/$slug" params={{ slug }}>
+          Lista de capítulos
           <ChevronRight />
         </Link>
       </div>

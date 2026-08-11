@@ -1,0 +1,79 @@
+services:
+  web:
+    build:
+      context: ..
+      target: web
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      MANGAFLOW_API_URL: http://api:3100
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - internal
+      - dokploy-network
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.mangaflow-web.rule=Host(`manga.vexclaud.site`)
+      - traefik.http.routers.mangaflow-web.entrypoints=websecure
+      - traefik.http.routers.mangaflow-web.tls.certresolver=letsencrypt
+      - traefik.http.services.mangaflow-web.loadbalancer.server.port=3000
+  api:
+    build:
+      context: ..
+      target: api
+    restart: unless-stopped
+    environment:
+      PORT: 3100
+      MANGAFLOW_DATA_DIR: /data
+      MANGAFLOW_ADMIN_TOKEN: ${MANGAFLOW_ADMIN_TOKEN}
+      MANGAFLOW_ASSET_LIMIT_BYTES: ${MANGAFLOW_ASSET_LIMIT_BYTES:-64424509440}
+      MANGAFLOW_MINIMUM_FREE_BYTES: ${MANGAFLOW_MINIMUM_FREE_BYTES:-26843545600}
+    volumes:
+      - mangaflow_data:/data
+    networks:
+      - internal
+      - dokploy-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3100/api/v1/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.mangaflow-api.rule=Host(`manga.vexclaud.site`) && (PathPrefix(`/api`) || PathPrefix(`/media`))
+      - traefik.http.routers.mangaflow-api.priority=20
+      - traefik.http.routers.mangaflow-api.entrypoints=websecure
+      - traefik.http.routers.mangaflow-api.tls.certresolver=letsencrypt
+      - traefik.http.services.mangaflow-api.loadbalancer.server.port=3100
+  worker:
+    build:
+      context: ..
+      target: worker
+    restart: unless-stopped
+    environment:
+      MANGAFLOW_API_INTERNAL_URL: http://api:3100/api/v1/admin/sync
+      MANGAFLOW_ADMIN_TOKEN: ${MANGAFLOW_ADMIN_TOKEN}
+      MANGAFLOW_SYNC_INTERVAL_MS: 900000
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - internal
+
+networks:
+  internal:
+  dokploy-network:
+    external: true
+
+volumes:
+  mangaflow_data:

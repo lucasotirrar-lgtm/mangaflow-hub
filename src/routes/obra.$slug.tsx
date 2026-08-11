@@ -1,22 +1,41 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { BookmarkPlus, Check, ChevronRight, Languages, Play, Server, Star } from "lucide-react";
-import { catalog, catalogService } from "@/services/catalog-service";
-import { ProductState } from "@/components/product-states";
+import { catalogService } from "@/services/catalog-service";
+import { CatalogSkeleton, ProductState } from "@/components/product-states";
+import type { CatalogItem } from "@/types/content";
+
 export const Route = createFileRoute("/obra/$slug")({ component: Detail });
+
 function Detail() {
   const { slug } = Route.useParams();
-  const item = catalog.find((x) => x.slug === slug) ?? catalogService.getCachedBySlug(slug);
+  const [item, setItem] = useState<CatalogItem>();
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setItem(undefined);
+    setFailed(false);
+    catalogService
+      .getBySlug(slug)
+      .then((value) => {
+        setItem(value);
+        if (!value) setFailed(true);
+      })
+      .catch(() => setFailed(true));
+  }, [slug]);
+
   if (!item)
     return (
-      <main className="page-shell">
-        <ProductState state="no-results" />
+      <main className="page-shell py-12">
+        {failed ? <ProductState state="no-results" /> : <CatalogSkeleton />}
       </main>
     );
+  const latest = item.chapters[0];
   return (
     <main className="pb-28">
       <section className="detail-hero">
         <img
-          src={item.hero || item.cover}
+          src={item.cover}
           alt=""
           className="absolute inset-0 h-full w-full object-cover opacity-25 blur-sm"
         />
@@ -58,22 +77,32 @@ function Detail() {
             </div>
             <p className="mt-5 max-w-3xl leading-7 text-muted-foreground">{item.synopsis}</p>
             <div className="mt-5 flex flex-wrap gap-2">
-              {item.genres.map((x) => (
-                <span className="tag" key={x}>
-                  {x}
+              {item.genres.map((genre) => (
+                <span className="tag" key={genre}>
+                  {genre}
                 </span>
               ))}
             </div>
             <div className="mt-7 flex flex-wrap gap-3">
-              <Link
-                to="/ler/$slug/$chapter"
-                params={{ slug: item.slug, chapter: String(item.latestChapter) }}
-                className="primary-button"
+              {latest ? (
+                <Link
+                  to="/ler/$slug/$chapter"
+                  params={{ slug: item.slug, chapter: latest.id }}
+                  className="primary-button"
+                >
+                  <Play />
+                  Ler capítulo {latest.number}
+                </Link>
+              ) : (
+                <span className="secondary-button cursor-not-allowed opacity-60">
+                  Sem capítulo PT-BR disponível
+                </span>
+              )}
+              <button
+                className="secondary-button"
+                disabled
+                title="A biblioteca será liberada no próximo ciclo"
               >
-                <Play />
-                Ler capítulo {item.latestChapter}
-              </Link>
-              <button className="secondary-button">
                 <BookmarkPlus />
                 Adicionar à biblioteca
               </button>
@@ -88,50 +117,48 @@ function Detail() {
               <span>CAPÍTULOS</span>
               <h2>Últimas atualizações</h2>
             </div>
-            <span>{item.chapters.length} exibidos</span>
+            <span>{item.chapters.length} em PT-BR</span>
           </div>
-          <div className="chapter-list">
-            {item.chapters.map((ch) => (
-              <Link
-                key={ch.id}
-                to="/ler/$slug/$chapter"
-                params={{ slug: item.slug, chapter: String(ch.number) }}
-                className="chapter-row"
-              >
-                <span className="chapter-number">
-                  {ch.read ? <Check /> : <span>{ch.number}</span>}
-                </span>
-                <div>
-                  <strong>Capítulo {ch.number}</strong>
-                  <small>
-                    {ch.title} · {ch.releasedAt}
-                  </small>
-                </div>
-                <span className="ml-auto hidden text-xs text-muted-foreground sm:block">
-                  {ch.language}
-                </span>
-                <ChevronRight />
-              </Link>
-            ))}
-          </div>
+          {item.chapters.length ? (
+            <div className="chapter-list">
+              {item.chapters.map((chapter) => (
+                <Link
+                  key={chapter.id}
+                  to="/ler/$slug/$chapter"
+                  params={{ slug: item.slug, chapter: chapter.id }}
+                  className="chapter-row"
+                >
+                  <span className="chapter-number">
+                    {chapter.read ? <Check /> : <span>{chapter.number}</span>}
+                  </span>
+                  <div>
+                    <strong>Capítulo {chapter.number}</strong>
+                    <small>
+                      {chapter.title} · {chapter.releasedAt}
+                    </small>
+                  </div>
+                  <span className="ml-auto hidden text-xs text-muted-foreground sm:block">
+                    {chapter.language}
+                  </span>
+                  <ChevronRight />
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <ProductState state="empty" />
+          )}
         </section>
         <aside>
           <div className="side-card">
             <h2>Fontes desta obra</h2>
-            <p>O servidor escolhe a fonte principal e faz fallback quando necessário.</p>
+            <p>Capítulos PT-BR e imagens são entregues pelo servidor próprio.</p>
             <div className="mt-4 space-y-2">
               {item.sources.map((source) => (
                 <div className="source-row" key={source.id}>
                   <Server />
                   <div>
                     <strong>{source.label}</strong>
-                    <span>
-                      {source.role === "primary"
-                        ? "Principal"
-                        : source.role === "metadata"
-                          ? "Metadados"
-                          : "Alternativa"}
-                    </span>
+                    <span>{source.role === "primary" ? "Principal" : "Metadados"}</span>
                   </div>
                   <i className={source.available ? "online" : "offline"}>
                     {source.available ? "Disponível" : "Indisponível"}
