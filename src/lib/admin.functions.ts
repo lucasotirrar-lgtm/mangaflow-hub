@@ -1,6 +1,81 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+export type AdminDashboardStats = {
+  generatedAt: string;
+  health: { api: boolean; database: boolean; worker: boolean; storage: boolean };
+  catalog: {
+    databaseTotal: number;
+    siteVisible: number;
+    adultHidden: number;
+    updatedAt: string | null;
+  };
+  chapters: {
+    total: number;
+    worksWithChapters: number;
+    withPageCount: number;
+    coveragePercent: number;
+    updatedAt: string | null;
+  };
+  assets: {
+    total: number;
+    available: number;
+    bytes: number;
+    covers: number;
+    chapterPages: number;
+    updatedAt: string | null;
+  };
+  storage: {
+    dataBytes: number;
+    databaseBytes: number;
+    diskTotalBytes: number;
+    diskFreeBytes: number;
+    diskUsedPercent: number;
+    assetLimitBytes: number;
+    minimumFreeBytes: number;
+  };
+  sync: {
+    provider: string;
+    status: string;
+    importedLastRun: number;
+    lastStartedAt: string | null;
+    lastFinishedAt: string | null;
+    ageSeconds: number | null;
+    failures24h: number;
+    error: string | null;
+    offset: number;
+    providerTotal: number;
+    stateUpdatedAt: string | null;
+  };
+};
+
+export const getAdminDashboard = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: role, error: roleError } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (roleError) throw roleError;
+    if (!role) throw new Error("Acesso administrativo necessário");
+
+    const token = process.env["MANGAFLOW_ADMIN_TOKEN"];
+    if (!token) throw new Error("Token interno do painel não configurado");
+    const baseUrl = (process.env["MANGAFLOW_API_URL"] || "https://manga.vexclaud.site").replace(
+      /\/$/,
+      "",
+    );
+    const response = await fetch(`${baseUrl}/api/v1/admin/dashboard`, {
+      headers: { "x-admin-token": token },
+      signal: AbortSignal.timeout(10_000),
+      cache: "no-store",
+    });
+    if (!response.ok) throw new Error(`Painel interno indisponível (${response.status})`);
+    return (await response.json()) as AdminDashboardStats;
+  });
+
 /**
  * Concede o papel de administrador ao usuário logado caso o site
  * ainda não possua nenhum administrador (primeiro acesso).

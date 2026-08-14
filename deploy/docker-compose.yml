@@ -4,6 +4,11 @@ services:
       context: ..
       target: web
     restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      MANGAFLOW_ADMIN_TOKEN: ${MANGAFLOW_ADMIN_TOKEN}
+      MANGAFLOW_API_URL: ${MANGAFLOW_API_URL:-https://manga.vexclaud.site}
     depends_on:
       api:
         condition: service_healthy
@@ -47,7 +52,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=dokploy-network
-      - traefik.http.routers.mangaflow-api.rule=Host(`manga.vexclaud.site`) && PathPrefix(`/api`)
+      - traefik.http.routers.mangaflow-api.rule=Host(`manga.vexclaud.site`) && (PathPrefix(`/api`) || PathPrefix(`/media`))
       - traefik.http.routers.mangaflow-api.priority=20
       - traefik.http.routers.mangaflow-api.entrypoints=websecure
       - traefik.http.routers.mangaflow-api.tls.certresolver=letsencrypt

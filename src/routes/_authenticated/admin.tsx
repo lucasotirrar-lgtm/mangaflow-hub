@@ -9,6 +9,7 @@ import { claimFirstAdmin } from "@/lib/admin.functions";
 import { MangaManager } from "@/components/admin/manga-manager";
 import { DestaqueManager } from "@/components/admin/destaque-manager";
 import { GeneroManager, NoticiaManager } from "@/components/admin/lista-managers";
+import { DashboardOverview } from "@/components/admin/dashboard-overview";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -29,14 +30,14 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPage,
 });
 
-const abas = ["Mangás", "Destaques", "Notícias", "Gêneros"] as const;
+const abas = ["Visão geral", "Mangás", "Destaques", "Notícias", "Gêneros"] as const;
 
 function AdminPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { user } = useAuth();
   const isAdmin = useIsAdmin(user?.id);
-  const [aba, setAba] = useState<(typeof abas)[number]>("Mangás");
+  const [aba, setAba] = useState<(typeof abas)[number]>("Visão geral");
   const claim = useServerFn(claimFirstAdmin);
 
   async function sair() {
@@ -112,6 +113,7 @@ function AdminPage() {
           </div>
 
           <div className="mt-6">
+            {aba === "Visão geral" && <DashboardOverview />}
             {aba === "Mangás" && <MangaManager />}
             {aba === "Destaques" && <DestaqueManager />}
             {aba === "Notícias" && <NoticiaManager />}
