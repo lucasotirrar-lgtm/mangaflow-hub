@@ -160,60 +160,76 @@ export function CatalogPage({
               <MangaCard key={item.id} manga={item} />
             ))}
           </div>
-          {totalPages > 1 && (
-            <nav
-              className="mt-10 flex flex-wrap items-center justify-center gap-3"
-              aria-label="Paginação do catálogo"
-            >
-              <button
-                type="button"
-                className="secondary-button disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() => goToPage(1)}
-                disabled={page === 1}
-              >
-                Primeira
-              </button>
-              <button
-                type="button"
-                className="secondary-button disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() => goToPage(page - 1)}
-                disabled={page === 1}
-              >
-                Anterior
-              </button>
-              <span className="text-sm font-bold text-muted-foreground">
-                Página {page.toLocaleString("pt-BR")} de {totalPages.toLocaleString("pt-BR")}
-              </span>
-              <button
-                type="button"
-                className="secondary-button disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() => goToPage(page + 1)}
-                disabled={page === totalPages}
-              >
-                Próxima
-              </button>
-              <button
-                type="button"
-                className="secondary-button disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() => goToPage(totalPages)}
-                disabled={page === totalPages}
-              >
-                Última
-              </button>
-            </nav>
-          )}
+          <CatalogPagination page={page} totalPages={totalPages} goToPage={goToPage} />
         </>
       ) : (
-        <ProductState
-          state="no-results"
-          action={
-            <button onClick={reset} className="secondary-button">
-              Limpar filtros
-            </button>
-          }
-        />
+        <>
+          <ProductState
+            state="no-results"
+            action={
+              <button onClick={reset} className="secondary-button">
+                Limpar filtros
+              </button>
+            }
+          />
+          <CatalogPagination page={page} totalPages={totalPages} goToPage={goToPage} />
+        </>
       )}
     </main>
+  );
+}
+
+function CatalogPagination({
+  page,
+  totalPages,
+  goToPage,
+}: {
+  page: number;
+  totalPages: number;
+  goToPage: (page: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+  return (
+    <nav
+      className="mt-10 flex flex-wrap items-center justify-center gap-3"
+      aria-label="Paginação do catálogo"
+    >
+      <button
+        type="button"
+        className="secondary-button disabled:cursor-not-allowed disabled:opacity-50"
+        onClick={() => goToPage(1)}
+        disabled={page === 1}
+      >
+        Primeira
+      </button>
+      <button
+        type="button"
+        className="secondary-button disabled:cursor-not-allowed disabled:opacity-50"
+        onClick={() => goToPage(page - 1)}
+        disabled={page === 1}
+      >
+        Anterior
+      </button>
+      <span className="text-sm font-bold text-muted-foreground">
+        Página {page.toLocaleString("pt-BR")} de {totalPages.toLocaleString("pt-BR")}
+      </span>
+      <button
+        type="button"
+        className="secondary-button disabled:cursor-not-allowed disabled:opacity-50"
+        onClick={() => goToPage(page + 1)}
+        disabled={page === totalPages}
+      >
+        Próxima
+      </button>
+      <button
+        type="button"
+        className="secondary-button disabled:cursor-not-allowed disabled:opacity-50"
+        onClick={() => goToPage(totalPages)}
+        disabled={page === totalPages}
+      >
+        Última
+      </button>
+    </nav>
   );
 }
 
