@@ -14,20 +14,38 @@ export function CatalogPage({
   description?: string;
   initialAge?: string;
 }) {
+  const pageSize = 48;
   const [kind, setKind] = useState("todos");
   const [age, setAge] = useState(initialAge);
   const [status, setStatus] = useState("todos");
   const [items, setItems] = useState<CatalogItem[]>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const includeAdult = age === "18+";
 
   useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setFailed(false);
     catalogService
-      .discover()
-      .then(setItems)
-      .catch(() => setFailed(true))
-      .finally(() => setLoading(false));
-  }, []);
+      .catalogPage({ page, limit: pageSize, includeAdult })
+      .then((response) => {
+        if (!active) return;
+        setItems(response.results);
+        setTotal(response.total);
+      })
+      .catch(() => {
+        if (active) setFailed(true);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [includeAdult, page]);
 
   const filtered = useMemo(
     () =>
@@ -43,6 +61,13 @@ export function CatalogPage({
     setKind("todos");
     setAge("todos");
     setStatus("todos");
+    setPage(1);
+  };
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const hasLocalFilters = kind !== "todos" || age !== "todos" || status !== "todos";
+  const goToPage = (nextPage: number) => {
+    setPage(Math.min(Math.max(nextPage, 1), totalPages));
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -59,14 +84,19 @@ export function CatalogPage({
         <span className="result-count">
           {loading
             ? "Carregando"
-            : `${filtered.length} ${filtered.length === 1 ? "obra" : "obras"}`}
+            : hasLocalFilters
+              ? `${filtered.length} nesta página · ${total.toLocaleString("pt-BR")} no catálogo`
+              : `${total.toLocaleString("pt-BR")} ${total === 1 ? "obra" : "obras"}`}
         </span>
       </div>
       <div className="filter-bar">
         <Filter
           label="Formato"
           value={kind}
-          set={setKind}
+          set={(value) => {
+            setKind(value);
+            setPage(1);
+          }}
           options={[
             ["todos", "Todos"],
             ["manga", "Mangá"],
@@ -77,7 +107,10 @@ export function CatalogPage({
         <Filter
           label="Faixa etária"
           value={age}
-          set={setAge}
+          set={(value) => {
+            setAge(value);
+            setPage(1);
+          }}
           options={[
             ["todos", "Todas"],
             ["Livre", "Livre"],
@@ -89,7 +122,10 @@ export function CatalogPage({
         <Filter
           label="Status"
           value={status}
-          set={setStatus}
+          set={(value) => {
+            setStatus(value);
+            setPage(1);
+          }}
           options={[
             ["todos", "Todos"],
             ["Em andamento", "Em andamento"],
@@ -118,11 +154,55 @@ export function CatalogPage({
           }
         />
       ) : filtered.length ? (
-        <div className="catalog-grid mt-8">
-          {filtered.map((item) => (
-            <MangaCard key={item.id} manga={item} />
-          ))}
-        </div>
+        <>
+          <div className="catalog-grid mt-8">
+            {filtered.map((item) => (
+              <MangaCard key={item.id} manga={item} />
+            ))}
+          </div>
+          {totalPages > 1 && (
+            <nav
+              className="mt-10 flex flex-wrap items-center justify-center gap-3"
+              aria-label="Paginação do catálogo"
+            >
+              <button
+                type="button"
+                className="secondary-button disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => goToPage(1)}
+                disabled={page === 1}
+              >
+                Primeira
+              </button>
+              <button
+                type="button"
+                className="secondary-button disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => goToPage(page - 1)}
+                disabled={page === 1}
+              >
+                Anterior
+              </button>
+              <span className="text-sm font-bold text-muted-foreground">
+                Página {page.toLocaleString("pt-BR")} de {totalPages.toLocaleString("pt-BR")}
+              </span>
+              <button
+                type="button"
+                className="secondary-button disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => goToPage(page + 1)}
+                disabled={page === totalPages}
+              >
+                Próxima
+              </button>
+              <button
+                type="button"
+                className="secondary-button disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => goToPage(totalPages)}
+                disabled={page === totalPages}
+              >
+                Última
+              </button>
+            </nav>
+          )}
+        </>
       ) : (
         <ProductState
           state="no-results"

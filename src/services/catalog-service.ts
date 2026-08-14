@@ -3,6 +3,13 @@ import type { CatalogItem } from "@/types/content";
 export const catalog: CatalogItem[] = [];
 const apiBase = (import.meta.env["VITE_CATALOG_API_URL"] || "").replace(/\/$/, "");
 
+export type CatalogPageResponse = {
+  results: CatalogItem[];
+  page: number;
+  limit: number;
+  total: number;
+};
+
 async function request<T>(path: string): Promise<T> {
   const response = await fetch(`${apiBase}${path}`, { headers: { accept: "application/json" } });
   if (!response.ok) throw new Error(`Catálogo indisponível (${response.status})`);
@@ -14,7 +21,23 @@ export const catalogService = {
     return this.discover();
   },
   async discover(): Promise<CatalogItem[]> {
-    return (await request<{ results: CatalogItem[] }>("/api/v1/catalog?limit=24")).results;
+    return (await this.catalogPage({ limit: 24 })).results;
+  },
+  async catalogPage({
+    page = 1,
+    limit = 48,
+    includeAdult = false,
+  }: {
+    page?: number;
+    limit?: number;
+    includeAdult?: boolean;
+  } = {}): Promise<CatalogPageResponse> {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+      adult: String(includeAdult),
+    });
+    return request<CatalogPageResponse>(`/api/v1/catalog?${params.toString()}`);
   },
   async getBySlug(slug: string): Promise<CatalogItem | undefined> {
     try {
