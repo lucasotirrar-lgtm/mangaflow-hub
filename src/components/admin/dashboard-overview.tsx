@@ -218,6 +218,20 @@ function DashboardContent({ data }: { data: AdminDashboardStats }) {
               <dd className="mt-1 font-bold">{formatAge(data.sync.ageSeconds)}</dd>
             </div>
           </dl>
+          <div className="mt-5 rounded-xl border border-border/70 bg-primary/5 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                Faixa adulta separada
+              </p>
+              <span className="text-xs font-bold text-primary">18+ · {data.adultSync.status}</span>
+            </div>
+            <p className="mt-2 text-sm">
+              {number.format(data.adultSync.importedLastRun)} importados no último lote
+              {data.adultSync.providerTotal
+                ? ` · ${number.format(data.adultSync.providerTotal)} disponíveis na fonte`
+                : " · aguardando primeiro lote"}
+            </p>
+          </div>
         </section>
 
         <section className="card-surface p-5">

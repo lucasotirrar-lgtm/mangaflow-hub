@@ -47,6 +47,15 @@ export type AdminDashboardStats = {
     providerTotal: number;
     stateUpdatedAt: string | null;
   };
+  adultSync: {
+    status: string;
+    importedLastRun: number;
+    lastFinishedAt: string | null;
+    ageSeconds: number | null;
+    offset: number;
+    providerTotal: number;
+    stateUpdatedAt: string | null;
+  };
 };
 
 export const getAdminDashboard = createServerFn({ method: "GET" })

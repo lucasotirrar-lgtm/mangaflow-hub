@@ -224,10 +224,11 @@ async function upsertMangaDex(item) {
 }
 
 const SYNC_OFFSET_FILE = path.join(dataDir, "sync_offset.json");
+const ADULT_SYNC_OFFSET_FILE = path.join(dataDir, "sync_adult_offset.json");
 
-function readSyncState() {
+function readSyncState(filePath = SYNC_OFFSET_FILE) {
   try {
-    const state = JSON.parse(fs.readFileSync(SYNC_OFFSET_FILE, "utf8"));
+    const state = JSON.parse(fs.readFileSync(filePath, "utf8"));
     return {
       offset: Number(state.offset) || 0,
       total: Number(state.total) || 0,
@@ -238,22 +239,25 @@ function readSyncState() {
   }
 }
 
-function writeSyncState(state) {
+function writeSyncState(state, filePath = SYNC_OFFSET_FILE) {
   try {
-    fs.writeFileSync(SYNC_OFFSET_FILE, JSON.stringify(state));
+    fs.writeFileSync(filePath, JSON.stringify(state));
   } catch (error) {
     console.error("[sync] failed to persist state", error);
   }
 }
 
-async function syncCatalog() {
+async function syncCatalog({ adult = false } = {}) {
   const runId = nowId();
-  await run("INSERT INTO sync_runs (id, status, provider) VALUES (?, 'running', 'mangadex')", [
+  const provider = adult ? "mangadex-adult" : "mangadex";
+  const stateFile = adult ? ADULT_SYNC_OFFSET_FILE : SYNC_OFFSET_FILE;
+  await run("INSERT INTO sync_runs (id, status, provider) VALUES (?, 'running', ?)", [
     runId,
+    provider,
   ]);
   try {
     const pageLimit = 100;
-    let offset = readSyncState().offset;
+    let offset = readSyncState(stateFile).offset;
     if (offset + pageLimit >= 9999) offset = 0;
     const params = new URLSearchParams({
       limit: String(pageLimit),
@@ -262,8 +266,9 @@ async function syncCatalog() {
     });
     params.append("includes[]", "cover_art");
     params.append("availableTranslatedLanguage[]", "pt-br");
-    params.append("contentRating[]", "safe");
-    params.append("contentRating[]", "suggestive");
+    for (const rating of adult ? ["erotica", "pornographic"] : ["safe", "suggestive"]) {
+      params.append("contentRating[]", rating);
+    }
     const response = await fetch(`https://api.mangadex.org/manga?${params}`, {
       signal: AbortSignal.timeout(20_000),
       headers: { "user-agent": "MangaFlow pessoal/1.0" },
@@ -278,7 +283,7 @@ async function syncCatalog() {
     const total = Number(payload.total || 0);
     let nextOffset = offset + pageLimit;
     if (!imported || nextOffset >= total) nextOffset = 0;
-    writeSyncState({ offset: nextOffset, total, updatedAt: new Date().toISOString() });
+    writeSyncState({ offset: nextOffset, total, updatedAt: new Date().toISOString() }, stateFile);
     await run(
       "UPDATE sync_runs SET status='succeeded', imported_count=?, finished_at=CURRENT_TIMESTAMP WHERE id=?",
       [imported, runId],
@@ -402,7 +407,17 @@ function secondsSince(sqliteDate) {
 }
 
 async function dashboardStats() {
-  const [works, chapters, assets, assetKinds, latestRun, failures, stat] = await Promise.all([
+  const [
+    works,
+    chapters,
+    assets,
+    assetKinds,
+    latestRun,
+    latestSuccessfulRun,
+    adultRun,
+    failures,
+    stat,
+  ] = await Promise.all([
     get(
       `SELECT COUNT(*) AS total,
               SUM(CASE WHEN is_adult = 0 THEN 1 ELSE 0 END) AS public,
@@ -430,7 +445,17 @@ async function dashboardStats() {
     ),
     get(
       `SELECT started_at, finished_at, status, provider, imported_count, error
-       FROM sync_runs ORDER BY started_at DESC LIMIT 1`,
+         FROM sync_runs ORDER BY started_at DESC LIMIT 1`,
+    ),
+    get(
+      `SELECT started_at, finished_at, status, provider, imported_count, error
+         FROM sync_runs WHERE status = 'succeeded'
+         ORDER BY started_at DESC LIMIT 1`,
+    ),
+    get(
+      `SELECT started_at, finished_at, status, provider, imported_count, error
+       FROM sync_runs WHERE provider = 'mangadex-adult'
+       ORDER BY started_at DESC LIMIT 1`,
     ),
     get(
       `SELECT COUNT(*) AS total FROM sync_runs
@@ -448,9 +473,14 @@ async function dashboardStats() {
   const diskFreeBytes = Number(stat.bavail) * Number(stat.bsize);
   const assetsBytes = Number(assets?.bytes || 0);
   const syncAgeSeconds = secondsSince(latestRun?.finished_at || latestRun?.started_at);
+  const successfulSyncAgeSeconds = secondsSince(
+    latestSuccessfulRun?.finished_at || latestSuccessfulRun?.started_at,
+  );
   const syncState = readSyncState();
-  const workerHealthy =
-    latestRun?.status === "succeeded" && syncAgeSeconds !== null && syncAgeSeconds < 180;
+  const adultSyncAgeSeconds = secondsSince(adultRun?.finished_at || adultRun?.started_at);
+  const adultSyncState = readSyncState(ADULT_SYNC_OFFSET_FILE);
+  const latestSyncState = latestRun?.provider === "mangadex-adult" ? adultSyncState : syncState;
+  const workerHealthy = successfulSyncAgeSeconds !== null && successfulSyncAgeSeconds < 180;
 
   return {
     generatedAt: new Date().toISOString(),
@@ -505,9 +535,18 @@ async function dashboardStats() {
       ageSeconds: syncAgeSeconds,
       failures24h: Number(failures?.total || 0),
       error: latestRun?.error || null,
-      offset: syncState.offset,
-      providerTotal: syncState.total,
-      stateUpdatedAt: syncState.updatedAt,
+      offset: latestSyncState.offset,
+      providerTotal: latestSyncState.total,
+      stateUpdatedAt: latestSyncState.updatedAt,
+    },
+    adultSync: {
+      status: adultRun?.status || "not_started",
+      importedLastRun: Number(adultRun?.imported_count || 0),
+      lastFinishedAt: adultRun?.finished_at || null,
+      ageSeconds: adultSyncAgeSeconds,
+      offset: adultSyncState.offset,
+      providerTotal: adultSyncState.total,
+      stateUpdatedAt: adultSyncState.updatedAt,
     },
   };
 }
@@ -700,6 +739,16 @@ app.post("/api/v1/admin/sync", async (req, res, next) => {
     if (!adminToken || req.get("x-admin-token") !== adminToken)
       return res.status(401).json({ error: "Não autorizado" });
     res.json(await syncCatalog());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/v1/admin/sync-adult", async (req, res, next) => {
+  try {
+    if (!adminToken || req.get("x-admin-token") !== adminToken)
+      return res.status(401).json({ error: "Não autorizado" });
+    res.json(await syncCatalog({ adult: true }));
   } catch (error) {
     next(error);
   }

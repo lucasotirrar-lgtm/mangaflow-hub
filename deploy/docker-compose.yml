@@ -65,7 +65,8 @@ services:
     environment:
       MANGAFLOW_API_INTERNAL_URL: http://api:3100/api/v1/admin/sync
       MANGAFLOW_ADMIN_TOKEN: ${MANGAFLOW_ADMIN_TOKEN}
-      MANGAFLOW_SYNC_INTERVAL_MS: 900000
+      MANGAFLOW_SYNC_INTERVAL_MS: 20000
+      MANGAFLOW_ADULT_SYNC_INTERVAL_MS: 60000
     depends_on:
       api:
         condition: service_healthy

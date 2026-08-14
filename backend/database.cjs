@@ -24,6 +24,8 @@ const all = (sql, params = []) =>
 
 async function initialize() {
   await run("PRAGMA journal_mode = WAL");
+  await run("PRAGMA synchronous = NORMAL");
+  await run("PRAGMA busy_timeout = 5000");
   await run("PRAGMA foreign_keys = ON");
   await run(`CREATE TABLE IF NOT EXISTS works (
     id TEXT PRIMARY KEY,
