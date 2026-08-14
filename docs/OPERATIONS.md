@@ -67,12 +67,12 @@ Worker: público a cada 20 s, adulto a cada 60 s e capítulos a cada 30 s
 
 | Métrica | Valor |
 | --- | ---: |
-| Obras no banco | 10.505 |
+| Obras no banco | 11.939 |
 | Visíveis no catálogo comum | 10.005 |
-| Adultas ocultas | 500 |
-| Capítulos | 132.887 |
-| Banco + assets | aproximadamente 2,14 GB (1,99 GiB) |
-| Espaço livre | aproximadamente 87,75 GB |
+| Adultas ocultas | 1.934 |
+| Capítulos | 133.202 |
+| Banco + assets | aproximadamente 2,35 GB (2,19 GiB) |
+| Espaço livre | aproximadamente 87,54 GB |
 | Provedor público/adulto | 11.949 / 1.934 |
 | Falhas nas últimas 24 h | 0 |
 
