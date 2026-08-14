@@ -35,7 +35,7 @@ conteúdo; usar apenas --env-file nos comandos.
 
 ## Rotas e segurança
 
-Públicas: /api/v1/ready, /api/v1/health, /api/v1/works?page=1&limit=48,
+Públicas: /api/v1/ready, /api/v1/health, /api/v1/catalog?page=1&limit=48,
 /api/v1/works/:slug, /api/v1/chapters/:chapterId/pages e /media/....
 
 Administrativas (exigem x-admin-token):
