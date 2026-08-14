@@ -67,6 +67,7 @@ services:
       MANGAFLOW_ADMIN_TOKEN: ${MANGAFLOW_ADMIN_TOKEN}
       MANGAFLOW_SYNC_INTERVAL_MS: 20000
       MANGAFLOW_ADULT_SYNC_INTERVAL_MS: 60000
+      MANGAFLOW_CHAPTER_SYNC_INTERVAL_MS: 30000
     depends_on:
       api:
         condition: service_healthy

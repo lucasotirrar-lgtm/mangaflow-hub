@@ -1,8 +1,12 @@
 const intervalMs = Number(process.env.MANGAFLOW_SYNC_INTERVAL_MS || 15 * 60 * 1000);
 const adultIntervalMs = Number(process.env.MANGAFLOW_ADULT_SYNC_INTERVAL_MS || 5 * 60 * 1000);
+const chapterIntervalMs = Number(process.env.MANGAFLOW_CHAPTER_SYNC_INTERVAL_MS || 30 * 1000);
 const endpoint = process.env.MANGAFLOW_API_INTERNAL_URL || "http://api:3100/api/v1/admin/sync";
 const adultEndpoint =
   process.env.MANGAFLOW_API_ADULT_INTERNAL_URL || endpoint.replace(/\/sync$/, "/sync-adult");
+const chapterEndpoint =
+  process.env.MANGAFLOW_API_CHAPTER_INTERNAL_URL ||
+  `${endpoint.replace(/\/sync$/, "/sync-chapters")}?limit=5`;
 const token = process.env.MANGAFLOW_ADMIN_TOKEN || "";
 
 async function sync() {
@@ -36,3 +40,19 @@ async function syncAdult() {
 }
 syncAdult();
 setInterval(syncAdult, adultIntervalMs);
+
+async function syncChapters() {
+  try {
+    const response = await fetch(chapterEndpoint, {
+      method: "POST",
+      headers: { "x-admin-token": token },
+      signal: AbortSignal.timeout(120_000),
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    console.log("[sync-chapters]", await response.json());
+  } catch (error) {
+    console.error("[sync-chapters]", error.message);
+  }
+}
+syncChapters();
+setInterval(syncChapters, chapterIntervalMs);

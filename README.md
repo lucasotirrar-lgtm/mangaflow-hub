@@ -106,3 +106,9 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## Operação e backup
+
+O manual de arquitetura, deploy, restauração, sincronização, métricas e
+handoff está em [docs/OPERATIONS.md](docs/OPERATIONS.md). O remoto é privado;
+não versione .env, tokens, chaves ou dumps do banco.
