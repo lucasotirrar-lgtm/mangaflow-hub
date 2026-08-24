@@ -43,7 +43,7 @@ Administrativas (exigem x-admin-token):
 - GET /api/v1/admin/dashboard — métricas do painel.
 - POST /api/v1/admin/sync — lote público.
 - POST /api/v1/admin/sync-adult — lote adulto oculto.
-- POST /api/v1/admin/sync-chapters?limit=5 — capítulos.
+- POST /api/v1/admin/sync-chapters?limit=100 — capítulos.
 
 O painel também exige usuário autenticado e papel administrativo em
 user_roles. O token fica no servidor e não chega ao navegador.
@@ -60,9 +60,10 @@ ou outra estratégia para garantir o restante. O provedor adulto informa 1.934.
 
 ## Agendamento
 
-Worker: incremental público a cada 15 min, adulto a cada 60 min e capítulos a
-cada 5 min (dez obras vencidas por lote). A reconciliação completa roda
-semanalmente. Não há execuções sobrepostas; 429/503 aplicam backoff e circuito.
+Worker: incremental público a cada 15 min, adulto a cada 60 min e uma fila
+contínua de capítulos (até 100 obras vencidas por lote). Cada obra importa toda
+a paginação PT-BR disponível. A reconciliação completa roda semanalmente. Não
+há execuções sobrepostas; 429/503 aplicam backoff e circuito.
 
 ## Snapshot validado em 14/08/2026
 

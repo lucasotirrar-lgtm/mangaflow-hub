@@ -1,6 +1,6 @@
 const incrementalIntervalMs = Number(process.env.MANGAFLOW_SYNC_INTERVAL_MS || 15 * 60 * 1000);
 const adultIntervalMs = Number(process.env.MANGAFLOW_ADULT_SYNC_INTERVAL_MS || 60 * 60 * 1000);
-const chapterIntervalMs = Number(process.env.MANGAFLOW_CHAPTER_SYNC_INTERVAL_MS || 5 * 60 * 1000);
+const chapterIntervalMs = Number(process.env.MANGAFLOW_CHAPTER_SYNC_INTERVAL_MS || 1000);
 const fullIntervalMs = Number(
   process.env.MANGAFLOW_FULL_SYNC_INTERVAL_MS || 7 * 24 * 60 * 60 * 1000,
 );
@@ -9,7 +9,7 @@ const adultEndpoint =
   process.env.MANGAFLOW_API_ADULT_INTERNAL_URL || endpoint.replace(/\/sync$/, "/sync-adult");
 const chapterEndpoint =
   process.env.MANGAFLOW_API_CHAPTER_INTERNAL_URL ||
-  `${endpoint.replace(/\/sync$/, "/sync-chapters")}?limit=10`;
+  `${endpoint.replace(/\/sync$/, "/sync-chapters")}?limit=100`;
 const token = process.env.MANGAFLOW_ADMIN_TOKEN || "";
 
 const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -45,7 +45,12 @@ async function runLoop({ name, url, intervalMs, timeoutMs = 5 * 60 * 1000, immed
 
 void runLoop({ name: "sync", url: endpoint, intervalMs: incrementalIntervalMs });
 void runLoop({ name: "sync-adult", url: adultEndpoint, intervalMs: adultIntervalMs });
-void runLoop({ name: "sync-chapters", url: chapterEndpoint, intervalMs: chapterIntervalMs });
+void runLoop({
+  name: "sync-chapters",
+  url: chapterEndpoint,
+  intervalMs: chapterIntervalMs,
+  timeoutMs: 15 * 60 * 1000,
+});
 void runLoop({
   name: "sync-full",
   url: `${endpoint}?mode=full`,

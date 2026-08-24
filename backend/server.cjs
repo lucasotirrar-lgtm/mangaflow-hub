@@ -1121,7 +1121,7 @@ app.post("/api/v1/admin/sync-chapters", async (req, res, next) => {
   try {
     if (!adminToken || req.get("x-admin-token") !== adminToken)
       return res.status(401).json({ error: "Não autorizado" });
-    const limit = Math.min(Math.max(Number(req.query.limit) || 5, 1), 20);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 100, 1), 100);
     res.json(await syncChaptersBatch(limit));
   } catch (error) {
     next(error);
