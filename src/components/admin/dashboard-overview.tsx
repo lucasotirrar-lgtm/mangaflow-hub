@@ -137,7 +137,12 @@ function DashboardContent({ data }: { data: AdminDashboardStats }) {
             <HealthItem
               label="Armazenamento"
               ok={data.health.storage}
-              detail={`${formatBytes(data.storage.diskFreeBytes)} livres`}
+              detail={`${formatBytes(data.storage.diskFreeBytes)} livres${data.health.storageWarning ? " · atenção" : ""}`}
+            />
+            <HealthItem
+              label="MangaDex"
+              ok={!data.health.providerCircuitOpen}
+              detail={data.health.providerCircuitOpen ? "Circuito em espera" : "Sem bloqueio"}
             />
           </div>
         </section>
@@ -170,7 +175,8 @@ function DashboardContent({ data }: { data: AdminDashboardStats }) {
             <p className="mt-4 text-xs text-muted-foreground">
               Limite seguro das imagens: {formatBytes(data.storage.assetLimitBytes)}. Reserva
               mínima:
-              {` ${formatBytes(data.storage.minimumFreeBytes)}`}.
+              {` ${formatBytes(data.storage.minimumFreeBytes)}`}. Alerta em
+              {` ${formatBytes(data.storage.warningFreeBytes)}`}.
             </p>
           </div>
         </section>
@@ -208,6 +214,14 @@ function DashboardContent({ data }: { data: AdminDashboardStats }) {
             <div>
               <dt className="text-xs text-muted-foreground">Falhas em 24h</dt>
               <dd className="mt-1 font-bold">{number.format(data.sync.failures24h)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Requisições em 24h</dt>
+              <dd className="mt-1 font-bold">{number.format(data.sync.requests24h)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Registros alterados</dt>
+              <dd className="mt-1 font-bold">{number.format(data.sync.changed24h)}</dd>
             </div>
             <div>
               <dt className="text-xs text-muted-foreground">Posição do ciclo</dt>

@@ -16,6 +16,8 @@ export type Chapter = {
   language: string;
   releasedAt: string;
   read?: boolean;
+  scanlationGroup?: string;
+  alternatives?: Chapter[];
 };
 
 export type CatalogItem = {
@@ -29,11 +31,13 @@ export type CatalogItem = {
   kind: ContentKind;
   ageRating: AgeRating;
   status: "Em andamento" | "Completo" | "Hiato";
-  rating: number;
-  year: number;
+  rating: number | null;
+  year: number | null;
   genres: string[];
   language: string;
   latestChapter: number;
+  chapterCount?: number;
+  metadataLanguages?: { title: string | null; synopsis: string | null };
   progress?: number;
   sources: ContentSource[];
   chapters: Chapter[];

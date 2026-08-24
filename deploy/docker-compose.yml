@@ -4,8 +4,6 @@ services:
       context: ..
       target: web
     restart: unless-stopped
-    env_file:
-      - ../.env
     environment:
       MANGAFLOW_ADMIN_TOKEN: ${MANGAFLOW_ADMIN_TOKEN}
       MANGAFLOW_API_URL: ${MANGAFLOW_API_URL:-https://manga.vexclaud.site}
@@ -33,6 +31,7 @@ services:
       MANGAFLOW_ADMIN_TOKEN: ${MANGAFLOW_ADMIN_TOKEN}
       MANGAFLOW_ASSET_LIMIT_BYTES: ${MANGAFLOW_ASSET_LIMIT_BYTES:-64424509440}
       MANGAFLOW_MINIMUM_FREE_BYTES: ${MANGAFLOW_MINIMUM_FREE_BYTES:-26843545600}
+      MANGAFLOW_WARNING_FREE_BYTES: ${MANGAFLOW_WARNING_FREE_BYTES:-37580963840}
     volumes:
       - mangaflow_data:/data
     networks:
@@ -52,8 +51,8 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=dokploy-network
-      - traefik.http.routers.mangaflow-api.rule=Host(`manga.vexclaud.site`) && (PathPrefix(`/api`) || PathPrefix(`/media`))
-      - traefik.http.routers.mangaflow-api.priority=20
+      - traefik.http.routers.mangaflow-api.rule=Host(`manga.vexclaud.site`) && PathPrefix(`/api`)
+      - traefik.http.routers.mangaflow-api.priority=30
       - traefik.http.routers.mangaflow-api.entrypoints=websecure
       - traefik.http.routers.mangaflow-api.tls.certresolver=letsencrypt
       - traefik.http.services.mangaflow-api.loadbalancer.server.port=3100
@@ -65,9 +64,10 @@ services:
     environment:
       MANGAFLOW_API_INTERNAL_URL: http://api:3100/api/v1/admin/sync
       MANGAFLOW_ADMIN_TOKEN: ${MANGAFLOW_ADMIN_TOKEN}
-      MANGAFLOW_SYNC_INTERVAL_MS: 20000
-      MANGAFLOW_ADULT_SYNC_INTERVAL_MS: 60000
-      MANGAFLOW_CHAPTER_SYNC_INTERVAL_MS: 30000
+      MANGAFLOW_SYNC_INTERVAL_MS: 900000
+      MANGAFLOW_ADULT_SYNC_INTERVAL_MS: 3600000
+      MANGAFLOW_CHAPTER_SYNC_INTERVAL_MS: 300000
+      MANGAFLOW_FULL_SYNC_INTERVAL_MS: 604800000
     depends_on:
       api:
         condition: service_healthy

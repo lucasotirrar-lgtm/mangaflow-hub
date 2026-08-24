@@ -11,18 +11,35 @@ function Detail() {
   const { slug } = Route.useParams();
   const [item, setItem] = useState<CatalogItem>();
   const [failed, setFailed] = useState(false);
+  const [chapterPage, setChapterPage] = useState(1);
+  const [chapterTotal, setChapterTotal] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     setItem(undefined);
     setFailed(false);
-    catalogService
-      .getBySlug(slug)
-      .then((value) => {
-        setItem(value);
+    Promise.all([catalogService.getBySlug(slug), catalogService.chapters(slug)])
+      .then(([value, chapters]) => {
+        setItem(value ? { ...value, chapters: chapters.results } : undefined);
+        setChapterPage(1);
+        setChapterTotal(chapters.total);
         if (!value) setFailed(true);
       })
       .catch(() => setFailed(true));
   }, [slug]);
+
+  const loadMore = async () => {
+    if (!item || loadingMore || item.chapters.length >= chapterTotal) return;
+    setLoadingMore(true);
+    try {
+      const next = chapterPage + 1;
+      const payload = await catalogService.chapters(slug, next);
+      setItem({ ...item, chapters: [...item.chapters, ...payload.results] });
+      setChapterPage(next);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   if (!item)
     return (
@@ -65,11 +82,13 @@ function Detail() {
               <p className="text-muted-foreground">{item.alternativeTitle}</p>
             )}
             <div className="mt-4 flex flex-wrap gap-4 text-sm">
-              <span className="flex items-center gap-1 font-bold text-star">
-                <Star className="h-4 w-4 fill-current" />
-                {item.rating}
-              </span>
-              <span>{item.year}</span>
+              {item.rating !== null && (
+                <span className="flex items-center gap-1 font-bold text-star">
+                  <Star className="h-4 w-4 fill-current" />
+                  {item.rating}
+                </span>
+              )}
+              {item.year && <span>{item.year}</span>}
               <span className="flex items-center gap-1">
                 <Languages className="h-4 w-4" />
                 {item.language}
@@ -117,7 +136,7 @@ function Detail() {
               <span>CAPÍTULOS</span>
               <h2>Últimas atualizações</h2>
             </div>
-            <span>{item.chapters.length} em PT-BR</span>
+            <span>{chapterTotal} em PT-BR</span>
           </div>
           {item.chapters.length ? (
             <div className="chapter-list">
@@ -146,6 +165,11 @@ function Detail() {
             </div>
           ) : (
             <ProductState state="empty" />
+          )}
+          {item.chapters.length < chapterTotal && (
+            <button className="secondary-button mt-5" onClick={loadMore} disabled={loadingMore}>
+              {loadingMore ? "Carregando…" : "Carregar mais capítulos"}
+            </button>
           )}
         </section>
         <aside>

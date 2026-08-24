@@ -17,17 +17,17 @@ Segredos nunca devem entrar neste arquivo, em commits ou em mensagens.
 Acesso administrativo via alias SSH coolify-main. VPS 147.15.98.2, atrás do
 Traefik/Dokploy.
 
-| Função | Caminho/contêiner |
-| --- | --- |
-| Fonte API/worker | /opt/mangaflow-hub/release-router |
-| Fonte frontend | /opt/mangaflow-hub/release-vercel-fix |
-| Compose API/worker | release-router/deploy/docker-compose.yml |
-| Compose frontend | release-vercel-fix/deploy/docker-compose.yml |
-| API / worker / web | deploy-api-1 / deploy-worker-1 / mangaflow-web-1 |
-| Proxy e rede | dokploy-traefik / dokploy-network |
-| Volume persistente | deploy_mangaflow_data montado como /data |
-| Banco e imagens | /data/mangaflow.db e /data/assets |
-| Cursores | /data/sync_offset.json e /data/sync_adult_offset.json |
+| Função             | Caminho/contêiner                                     |
+| ------------------ | ----------------------------------------------------- |
+| Fonte API/worker   | /opt/mangaflow-hub/release-router                     |
+| Fonte frontend     | /opt/mangaflow-hub/release-vercel-fix                 |
+| Compose API/worker | release-router/deploy/docker-compose.yml              |
+| Compose frontend   | release-vercel-fix/deploy/docker-compose.yml          |
+| API / worker / web | deploy-api-1 / deploy-worker-1 / mangaflow-web-1      |
+| Proxy e rede       | dokploy-traefik / dokploy-network                     |
+| Volume persistente | deploy_mangaflow_data montado como /data              |
+| Banco e imagens    | /data/mangaflow.db e /data/assets                     |
+| Cursores           | /data/sync_offset.json e /data/sync_adult_offset.json |
 
 O .env de produção fica em /opt/mangaflow-hub/.env e não é versionado. Ele
 contém o token administrativo e chaves de autenticação. Nunca exibir seu
@@ -39,6 +39,7 @@ Públicas: /api/v1/ready, /api/v1/health, /api/v1/catalog?page=1&limit=48,
 /api/v1/works/:slug, /api/v1/chapters/:chapterId/pages e /media/....
 
 Administrativas (exigem x-admin-token):
+
 - GET /api/v1/admin/dashboard — métricas do painel.
 - POST /api/v1/admin/sync — lote público.
 - POST /api/v1/admin/sync-adult — lote adulto oculto.
@@ -49,8 +50,9 @@ user_roles. O token fica no servidor e não chega ao navegador.
 
 ## Banco, catálogo e importação
 
-backend/database.cjs cria works, chapters, assets e sync_runs. SQLite usa
-WAL, synchronous=NORMAL, busy_timeout=5000 e chaves estrangeiras.
+backend/database.cjs cria works, chapters, assets, sync_runs, sync_cursors,
+work_sync_state, provider_health e o índice FTS5. SQLite usa WAL,
+synchronous=NORMAL, busy_timeout=5000 e chaves estrangeiras.
 O catálogo é paginado em 48 itens e is_adult=1 só aparece no filtro adulto.
 O provedor público informa cerca de 11.949 obras e a janela atual chega a
 aproximadamente 10 mil posições; ainda é pendência particionar por data/gênero
@@ -58,23 +60,24 @@ ou outra estratégia para garantir o restante. O provedor adulto informa 1.934.
 
 ## Agendamento
 
-Worker: público a cada 20 s, adulto a cada 60 s e capítulos a cada 30 s
-(cinco obras por lote). Falhas são registradas e a próxima tentativa continua.
+Worker: incremental público a cada 15 min, adulto a cada 60 min e capítulos a
+cada 5 min (dez obras vencidas por lote). A reconciliação completa roda
+semanalmente. Não há execuções sobrepostas; 429/503 aplicam backoff e circuito.
 
 ## Snapshot validado em 14/08/2026
 
 É um retrato; o dashboard é a fonte atualizada em tempo real.
 
-| Métrica | Valor |
-| --- | ---: |
-| Obras no banco | 11.939 |
-| Visíveis no catálogo comum | 10.005 |
-| Adultas ocultas | 1.934 |
-| Capítulos | 133.202 |
-| Banco + assets | aproximadamente 2,35 GB (2,19 GiB) |
-| Espaço livre | aproximadamente 87,54 GB |
-| Provedor público/adulto | 11.949 / 1.934 |
-| Falhas nas últimas 24 h | 0 |
+| Métrica                    |                              Valor |
+| -------------------------- | ---------------------------------: |
+| Obras no banco             |                             11.939 |
+| Visíveis no catálogo comum |                             10.005 |
+| Adultas ocultas            |                              1.934 |
+| Capítulos                  |                            133.202 |
+| Banco + assets             | aproximadamente 2,35 GB (2,19 GiB) |
+| Espaço livre               |           aproximadamente 87,54 GB |
+| Provedor público/adulto    |                     11.949 / 1.934 |
+| Falhas nas últimas 24 h    |                                  0 |
 
 Homepage, /auth, health e catálogos responderam 200; dashboard sem token
 respondeu 401; API, worker e web estavam saudáveis.
@@ -126,5 +129,5 @@ Para outra IA: ler AGENTS.md, README e este manual; conferir branch/remoto;
 validar site antes de mutar; fazer backup; alterar o menor serviço; testar;
 registrar commit, rollback e pendências. Não reescrever histórico Lovable.
 
-Pendência conhecida: particionar a sincronização pública para ultrapassar a
-janela de aproximadamente 10 mil posições sem duplicatas ou perda.
+As reconciliações completas são separadas por classificação de conteúdo para
+não atingir a janela de aproximadamente 10 mil posições do MangaDex.

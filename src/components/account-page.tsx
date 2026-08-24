@@ -54,7 +54,7 @@ export function AccountPage({ section }: { section: AccountSection }) {
       {section === "biblioteca" || section === "favoritos" || section === "historico" ? (
         <div className="catalog-grid">
           {catalog
-            .filter((x) => section !== "favoritos" || x.rating >= 4.7)
+            .filter((x) => section !== "favoritos" || (x.rating ?? 0) >= 4.7)
             .slice(0, 4)
             .map((x) => (
               <MangaCard manga={x} key={x.id} />

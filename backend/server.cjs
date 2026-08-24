@@ -5,6 +5,7 @@ const fsp = require("node:fs/promises");
 const path = require("node:path");
 const express = require("express");
 const { all, dataDir, get, initialize, run } = require("./database.cjs");
+const { fetchMangaDex } = require("./mangadex-client.cjs");
 
 const app = express();
 const port = Number(process.env.PORT || 3100);
@@ -14,6 +15,9 @@ const assetLimitBytes = Number(process.env.MANGAFLOW_ASSET_LIMIT_BYTES || 60 * 1
 const minimumFreeBytes = Number(
   process.env.MANGAFLOW_MINIMUM_FREE_BYTES || 25 * 1024 * 1024 * 1024,
 );
+const warningFreeBytes = Number(
+  process.env.MANGAFLOW_WARNING_FREE_BYTES || 35 * 1024 * 1024 * 1024,
+);
 const allowedImageTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
 const allowedHosts = new Set([
   "uploads.mangadex.org",
@@ -21,6 +25,8 @@ const allowedHosts = new Set([
   "api.mangadex.org",
   "cdn.readdetectiveconan.com",
 ]);
+const inFlightJobs = new Map();
+const inFlightAssets = new Map();
 
 app.disable("x-powered-by");
 app.use((req, res, next) => {
@@ -58,13 +64,65 @@ const normalize = (value) =>
     .replace(/^-|-$/g, "");
 const slugFor = (source, externalId, title) =>
   `${normalize(title).slice(0, 80)}--${source}--${externalId}`.replace(/[^a-z0-9-]/g, "-");
-const localize = (values, fallback = "") =>
-  values?.["pt-br"] ||
-  values?.pt ||
-  values?.en ||
-  values?.["ja-ro"] ||
-  Object.values(values || {})[0] ||
-  fallback;
+const localizedValue = (values, languages, fallback = "") => {
+  for (const language of languages) {
+    if (values?.[language]) return { value: values[language], language };
+  }
+  return { value: fallback, language: null };
+};
+
+const genreTranslations = new Map(
+  Object.entries({
+    Action: "Ação",
+    Adventure: "Aventura",
+    Comedy: "Comédia",
+    Drama: "Drama",
+    Fantasy: "Fantasia",
+    Horror: "Terror",
+    Mystery: "Mistério",
+    Romance: "Romance",
+    "Sci-Fi": "Ficção científica",
+    "Slice of Life": "Cotidiano",
+    Sports: "Esportes",
+    Supernatural: "Sobrenatural",
+    Thriller: "Suspense",
+    Tragedy: "Tragédia",
+    Historical: "Histórico",
+    Medical: "Médico",
+    Military: "Militar",
+    Music: "Música",
+    Philosophical: "Filosófico",
+    Psychological: "Psicológico",
+    School: "Escolar",
+    Survival: "Sobrevivência",
+    Crime: "Crime",
+    Cooking: "Culinária",
+    "Martial Arts": "Artes marciais",
+    "Boys' Love": "Boys Love",
+    "Girls' Love": "Girls Love",
+    Isekai: "Isekai",
+    Mecha: "Mecha",
+    Samurai: "Samurai",
+    Ninja: "Ninja",
+    Vampires: "Vampiros",
+    Zombies: "Zumbis",
+  }),
+);
+
+function localizedGenre(values) {
+  const portuguese = localizedValue(values, ["pt-br", "pt"]);
+  if (portuguese.value) return portuguese.value;
+  return genreTranslations.get(values?.en) || "";
+}
+
+async function singleFlight(key, task) {
+  if (inFlightJobs.has(key)) return inFlightJobs.get(key);
+  const promise = Promise.resolve()
+    .then(task)
+    .finally(() => inFlightJobs.delete(key));
+  inFlightJobs.set(key, promise);
+  return promise;
+}
 
 function isAllowedSource(url) {
   try {
@@ -94,7 +152,13 @@ function imageExtension(mime) {
   );
 }
 
-async function storeAsset({ workId = null, chapterId = null, kind, pageIndex = null, sourceUrl }) {
+async function storeAssetOnce({
+  workId = null,
+  chapterId = null,
+  kind,
+  pageIndex = null,
+  sourceUrl,
+}) {
   if (!isAllowedSource(sourceUrl))
     throw Object.assign(new Error("Origem de imagem não autorizada"), { status: 400 });
   const existing = await get(
@@ -138,6 +202,9 @@ async function storeAsset({ workId = null, chapterId = null, kind, pageIndex = n
       hash.update(chunk);
       await handle.write(chunk);
     }
+  } catch (error) {
+    await fsp.unlink(tempPath).catch(() => {});
+    throw error;
   } finally {
     await handle.close();
   }
@@ -180,12 +247,37 @@ async function storeAsset({ workId = null, chapterId = null, kind, pageIndex = n
   return get("SELECT * FROM assets WHERE id = ?", [id]);
 }
 
+async function storeAsset(options) {
+  const key = options.chapterId
+    ? `chapter:${options.chapterId}:${options.pageIndex}`
+    : `work:${options.workId}:${options.kind}`;
+  if (inFlightAssets.has(key)) return inFlightAssets.get(key);
+  const promise = storeAssetOnce(options).finally(() => inFlightAssets.delete(key));
+  inFlightAssets.set(key, promise);
+  return promise;
+}
+
 async function upsertMangaDex(item) {
   const attrs = item.attributes || {};
   const cover = (item.relationships || []).find((relation) => relation.type === "cover_art")
     ?.attributes?.fileName;
   const id = stableId("mangadex", item.id);
-  const title = localize(attrs.title, "Sem título");
+  const providerUpdatedAt = attrs.updatedAt || null;
+  const existing = await get("SELECT provider_updated_at FROM works WHERE id = ?", [id]);
+  if (
+    existing?.provider_updated_at &&
+    providerUpdatedAt &&
+    existing.provider_updated_at >= providerUpdatedAt
+  ) {
+    return { work: await get("SELECT * FROM works WHERE id = ?", [id]), changed: false };
+  }
+  const titleResult = localizedValue(attrs.title, ["pt-br", "pt", "en", "ja-ro"], "Sem título");
+  const synopsisResult = localizedValue(
+    attrs.description,
+    ["pt-br", "pt"],
+    "Sinopse indisponível em português.",
+  );
+  const title = titleResult.value;
   const adult = ["erotica", "pornographic"].includes(attrs.contentRating) ? 1 : 0;
   const kind =
     attrs.originalLanguage === "ko"
@@ -200,108 +292,225 @@ async function upsertMangaDex(item) {
         ? "Hiato"
         : "Em andamento";
   await run(
-    `INSERT INTO works (id, source, external_id, slug, title, alternative_title, synopsis, cover_source_url, kind, status, year, language, genres_json, is_adult)
-     VALUES (?, 'mangadex', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pt-BR', ?, ?)
-     ON CONFLICT(source, external_id) DO UPDATE SET title=excluded.title, alternative_title=excluded.alternative_title, synopsis=excluded.synopsis, cover_source_url=excluded.cover_source_url, kind=excluded.kind, status=excluded.status, year=excluded.year, genres_json=excluded.genres_json, is_adult=excluded.is_adult, updated_at=CURRENT_TIMESTAMP`,
+    `INSERT INTO works
+      (id, source, external_id, slug, title, alternative_title, synopsis, cover_source_url,
+       kind, status, year, language, genres_json, is_adult, provider_updated_at,
+       title_language, synopsis_language)
+     VALUES (?, 'mangadex', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pt-BR', ?, ?, ?, ?, ?)
+     ON CONFLICT(source, external_id) DO UPDATE SET title=excluded.title,
+       alternative_title=excluded.alternative_title, synopsis=excluded.synopsis,
+       cover_source_url=excluded.cover_source_url, kind=excluded.kind, status=excluded.status,
+       year=excluded.year, genres_json=excluded.genres_json, is_adult=excluded.is_adult,
+       provider_updated_at=excluded.provider_updated_at, title_language=excluded.title_language,
+       synopsis_language=excluded.synopsis_language, updated_at=CURRENT_TIMESTAMP`,
     [
       id,
       item.id,
       slugFor("mangadex", item.id, title),
       title,
-      (attrs.altTitles || []).map((value) => localize(value, "")).find(Boolean) || null,
-      localize(attrs.description, "Sinopse ainda não disponível em português."),
+      (attrs.altTitles || [])
+        .map((value) => localizedValue(value, ["pt-br", "pt", "en", "ja-ro"]).value)
+        .find(Boolean) || null,
+      synopsisResult.value,
       cover ? `https://uploads.mangadex.org/covers/${item.id}/${cover}` : null,
       kind,
       status,
       attrs.year || null,
       JSON.stringify(
-        (attrs.tags || []).map((tag) => localize(tag.attributes?.name, "")).filter(Boolean),
+        (attrs.tags || []).map((tag) => localizedGenre(tag.attributes?.name)).filter(Boolean),
       ),
       adult,
+      providerUpdatedAt,
+      titleResult.language,
+      synopsisResult.language,
     ],
   );
-  return get("SELECT * FROM works WHERE id = ?", [id]);
+  await run(
+    `INSERT OR IGNORE INTO work_sync_state(work_id, next_check_at)
+     VALUES (?, CURRENT_TIMESTAMP)`,
+    [id],
+  );
+  return { work: await get("SELECT * FROM works WHERE id = ?", [id]), changed: true };
 }
 
-const SYNC_OFFSET_FILE = path.join(dataDir, "sync_offset.json");
-const ADULT_SYNC_OFFSET_FILE = path.join(dataDir, "sync_adult_offset.json");
+async function readSyncCursor(lane, mode = "incremental") {
+  return (
+    (await get("SELECT * FROM sync_cursors WHERE provider='mangadex' AND lane=? AND mode=?", [
+      lane,
+      mode,
+    ])) || {
+      offset: 0,
+      high_water_mark: null,
+      provider_total: 0,
+      last_full_at: null,
+      updated_at: null,
+    }
+  );
+}
 
-function readSyncState(filePath = SYNC_OFFSET_FILE) {
-  try {
-    const state = JSON.parse(fs.readFileSync(filePath, "utf8"));
-    return {
-      offset: Number(state.offset) || 0,
-      total: Number(state.total) || 0,
-      updatedAt: state.updatedAt || null,
-    };
-  } catch {
-    return { offset: 0, total: 0, updatedAt: null };
+async function writeSyncCursor({
+  lane,
+  mode,
+  offset = 0,
+  highWaterMark = null,
+  providerTotal = 0,
+  lastFullAt = null,
+}) {
+  await run(
+    `INSERT INTO sync_cursors
+      (provider, lane, mode, offset, high_water_mark, provider_total, last_full_at)
+     VALUES ('mangadex', ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(provider, lane, mode) DO UPDATE SET offset=excluded.offset,
+       high_water_mark=COALESCE(excluded.high_water_mark, sync_cursors.high_water_mark),
+       provider_total=excluded.provider_total,
+       last_full_at=COALESCE(excluded.last_full_at, sync_cursors.last_full_at),
+       updated_at=CURRENT_TIMESTAMP`,
+    [lane, mode, offset, highWaterMark, providerTotal, lastFullAt],
+  );
+}
+
+async function finishSyncRun(runId, status, stats, error = null) {
+  await run(
+    `UPDATE sync_runs SET status=?, imported_count=?, examined_count=?, changed_count=?,
+       request_count=?, duration_ms=?, error=?, finished_at=CURRENT_TIMESTAMP WHERE id=?`,
+    [
+      status,
+      stats.changed,
+      stats.examined,
+      stats.changed,
+      stats.requests,
+      Date.now() - stats.startedAt,
+      error ? String(error.message || error).slice(0, 1000) : null,
+      runId,
+    ],
+  );
+  await run("DELETE FROM sync_runs WHERE started_at < datetime('now', '-30 days')");
+}
+
+function catalogRatings(adult, mode) {
+  if (mode === "full") {
+    return adult
+      ? [
+          { lane: "adult-erotica", ratings: ["erotica"] },
+          { lane: "adult-pornographic", ratings: ["pornographic"] },
+        ]
+      : [
+          { lane: "public-safe", ratings: ["safe"] },
+          { lane: "public-suggestive", ratings: ["suggestive"] },
+        ];
   }
+  return [
+    {
+      lane: adult ? "adult" : "public",
+      ratings: adult ? ["erotica", "pornographic"] : ["safe", "suggestive"],
+    },
+  ];
 }
 
-function writeSyncState(state, filePath = SYNC_OFFSET_FILE) {
-  try {
-    fs.writeFileSync(filePath, JSON.stringify(state));
-  } catch (error) {
-    console.error("[sync] failed to persist state", error);
-  }
-}
-
-async function syncCatalog({ adult = false } = {}) {
+async function syncCatalogUnsafe({ adult = false, mode = "incremental" } = {}) {
   const runId = nowId();
   const provider = adult ? "mangadex-adult" : "mangadex";
-  const stateFile = adult ? ADULT_SYNC_OFFSET_FILE : SYNC_OFFSET_FILE;
-  await run("INSERT INTO sync_runs (id, status, provider) VALUES (?, 'running', ?)", [
+  const jobType = mode === "full" ? "catalog_full" : "catalog_incremental";
+  const stats = { startedAt: Date.now(), examined: 0, changed: 0, requests: 0 };
+  await run("INSERT INTO sync_runs (id, status, provider, job_type) VALUES (?, 'running', ?, ?)", [
     runId,
     provider,
+    jobType,
   ]);
   try {
     const pageLimit = 100;
-    let offset = readSyncState(stateFile).offset;
-    if (offset + pageLimit >= 9999) offset = 0;
-    const params = new URLSearchParams({
-      limit: String(pageLimit),
-      offset: String(offset),
-      "order[latestUploadedChapter]": "desc",
-    });
-    params.append("includes[]", "cover_art");
-    params.append("availableTranslatedLanguage[]", "pt-br");
-    for (const rating of adult ? ["erotica", "pornographic"] : ["safe", "suggestive"]) {
-      params.append("contentRating[]", rating);
+    let newestHighWaterMark = null;
+    let providerTotal = 0;
+    for (const laneConfig of catalogRatings(adult, mode)) {
+      const cursor = await readSyncCursor(laneConfig.lane, mode);
+      const previousHighWaterMark = cursor.high_water_mark;
+      let offset = mode === "full" ? Number(cursor.offset || 0) : 0;
+      let reachedHighWaterMark = false;
+      let completed = false;
+      let pages = 0;
+      while (!completed && pages < (mode === "full" ? 100 : 20)) {
+        const params = new URLSearchParams({
+          limit: String(pageLimit),
+          offset: String(offset),
+          "order[updatedAt]": "desc",
+        });
+        params.append("includes[]", "cover_art");
+        params.append("availableTranslatedLanguage[]", "pt-br");
+        for (const rating of laneConfig.ratings) params.append("contentRating[]", rating);
+        const response = await fetchMangaDex(`/manga?${params}`, { stats });
+        const payload = await response.json();
+        const items = payload.data || [];
+        providerTotal += Number(payload.total || 0);
+        stats.examined += items.length;
+        for (const item of items) {
+          const itemUpdatedAt = item.attributes?.updatedAt || null;
+          if (!newestHighWaterMark || (itemUpdatedAt && itemUpdatedAt > newestHighWaterMark)) {
+            newestHighWaterMark = itemUpdatedAt;
+          }
+          if (
+            mode === "incremental" &&
+            previousHighWaterMark &&
+            itemUpdatedAt &&
+            itemUpdatedAt <= previousHighWaterMark
+          ) {
+            reachedHighWaterMark = true;
+            break;
+          }
+          const result = await upsertMangaDex(item);
+          if (result.changed) stats.changed += 1;
+        }
+        pages += 1;
+        const nextOffset = offset + items.length;
+        completed =
+          reachedHighWaterMark ||
+          items.length < pageLimit ||
+          nextOffset >= Number(payload.total || 0) ||
+          nextOffset > 9_900 ||
+          (mode === "incremental" && !previousHighWaterMark);
+        offset = completed ? 0 : nextOffset;
+        await writeSyncCursor({
+          lane: laneConfig.lane,
+          mode,
+          offset,
+          highWaterMark: newestHighWaterMark || previousHighWaterMark,
+          providerTotal: Number(payload.total || 0),
+          lastFullAt: mode === "full" && completed ? new Date().toISOString() : null,
+        });
+      }
     }
-    const response = await fetch(`https://api.mangadex.org/manga?${params}`, {
-      signal: AbortSignal.timeout(20_000),
-      headers: { "user-agent": "MangaFlow pessoal/1.0" },
+    const aggregateLane = adult ? "adult" : "public";
+    const aggregateCursor = await readSyncCursor(aggregateLane, "incremental");
+    await writeSyncCursor({
+      lane: aggregateLane,
+      mode: "incremental",
+      highWaterMark: newestHighWaterMark || aggregateCursor.high_water_mark,
+      providerTotal,
     });
-    if (!response.ok) throw new Error(`MangaDex HTTP ${response.status}`);
-    const payload = await response.json();
-    let imported = 0;
-    for (const item of payload.data || []) {
-      await upsertMangaDex(item);
-      imported += 1;
-    }
-    const total = Number(payload.total || 0);
-    let nextOffset = offset + pageLimit;
-    if (!imported || nextOffset >= total) nextOffset = 0;
-    writeSyncState({ offset: nextOffset, total, updatedAt: new Date().toISOString() }, stateFile);
-    await run(
-      "UPDATE sync_runs SET status='succeeded', imported_count=?, finished_at=CURRENT_TIMESTAMP WHERE id=?",
-      [imported, runId],
-    );
-    return { imported, offset, total, nextOffset };
+    await finishSyncRun(runId, "succeeded", stats);
+    return {
+      mode,
+      imported: stats.changed,
+      examined: stats.examined,
+      requests: stats.requests,
+      total: providerTotal,
+    };
   } catch (error) {
-    await run(
-      "UPDATE sync_runs SET status='failed', error=?, finished_at=CURRENT_TIMESTAMP WHERE id=?",
-      [String(error.message || error), runId],
-    );
+    await finishSyncRun(runId, "failed", stats, error);
     throw error;
   }
 }
 
-async function syncChapters(work) {
-  if (work.source !== "mangadex") return [];
+async function syncCatalog(options = {}) {
+  const key = `catalog:${options.adult ? "adult" : "public"}`;
+  return singleFlight(key, () => syncCatalogUnsafe(options));
+}
+
+async function syncChapters(work, stats = { requests: 0 }) {
+  if (work.source !== "mangadex") return { chapters: [], fetchedCount: 0, changed: 0 };
   let offset = 0;
   let total = Infinity;
+  let fetchedCount = 0;
+  let changed = 0;
   while (offset < total) {
     const params = new URLSearchParams({
       limit: "100",
@@ -310,22 +519,27 @@ async function syncChapters(work) {
     });
     params.append("translatedLanguage[]", "pt-br");
     params.append("includes[]", "scanlation_group");
-    const response = await fetch(
-      `https://api.mangadex.org/manga/${work.external_id}/feed?${params}`,
-      { signal: AbortSignal.timeout(20_000), headers: { "user-agent": "MangaFlow pessoal/1.0" } },
-    );
-    if (!response.ok) throw new Error(`Capítulos indisponíveis (${response.status})`);
+    const response = await fetchMangaDex(`/manga/${work.external_id}/feed?${params}`, { stats });
     const payload = await response.json();
     const chapters = payload.data || [];
+    fetchedCount += chapters.length;
     for (const chapter of chapters) {
       const attrs = chapter.attributes || {};
       const group =
         (chapter.relationships || []).find((relation) => relation.type === "scanlation_group")
           ?.attributes?.name || "Grupo não informado";
-      await run(
+      const result = await run(
         `INSERT INTO chapters (id, work_id, source, external_id, chapter_number, volume_number, title, language, published_at, scanlation_group)
        VALUES (?, ?, 'mangadex', ?, ?, ?, ?, 'pt-BR', ?, ?)
-       ON CONFLICT(external_id) DO UPDATE SET chapter_number=excluded.chapter_number, volume_number=excluded.volume_number, title=excluded.title, published_at=excluded.published_at, scanlation_group=excluded.scanlation_group, updated_at=CURRENT_TIMESTAMP`,
+       ON CONFLICT(external_id) DO UPDATE SET chapter_number=excluded.chapter_number,
+         volume_number=excluded.volume_number, title=excluded.title,
+         published_at=excluded.published_at, scanlation_group=excluded.scanlation_group,
+         updated_at=CURRENT_TIMESTAMP
+       WHERE COALESCE(chapters.chapter_number, '') <> COALESCE(excluded.chapter_number, '')
+          OR COALESCE(chapters.volume_number, '') <> COALESCE(excluded.volume_number, '')
+          OR COALESCE(chapters.title, '') <> COALESCE(excluded.title, '')
+          OR COALESCE(chapters.published_at, '') <> COALESCE(excluded.published_at, '')
+          OR COALESCE(chapters.scanlation_group, '') <> COALESCE(excluded.scanlation_group, '')`,
         [
           stableId("chapter", chapter.id),
           work.id,
@@ -337,23 +551,22 @@ async function syncChapters(work) {
           group,
         ],
       );
+      changed += Number(result.changes || 0);
     }
     offset += chapters.length;
     total = Number(payload.total || offset);
     if (!chapters.length) break;
   }
-  return all(
-    "SELECT * FROM chapters WHERE work_id = ? AND language = ? ORDER BY CAST(chapter_number AS REAL) DESC, published_at DESC",
+  const chapters = await all(
+    `SELECT * FROM chapters WHERE work_id = ? AND language = ?
+     ORDER BY CAST(chapter_number AS REAL) DESC, published_at DESC`,
     [work.id, "pt-BR"],
   );
+  return { chapters, fetchedCount, changed };
 }
 
 async function pageUrls(chapter) {
-  const response = await fetch(`https://api.mangadex.org/at-home/server/${chapter.external_id}`, {
-    signal: AbortSignal.timeout(20_000),
-    headers: { "user-agent": "MangaFlow pessoal/1.0" },
-  });
-  if (!response.ok) throw new Error(`Leitor indisponível (${response.status})`);
+  const response = await fetchMangaDex(`/at-home/server/${chapter.external_id}`);
   const payload = await response.json();
   if (payload.result !== "ok") throw new Error("MangaDex não disponibilizou este capítulo");
   return (payload.chapter.data || []).map(
@@ -372,11 +585,16 @@ function serializeWork(work) {
     kind: work.kind === "manhua" ? "manga" : work.kind,
     ageRating: work.is_adult ? "18+" : "14",
     status: work.status,
-    rating: work.rating || 0,
-    year: work.year || new Date().getFullYear(),
+    rating: Number(work.rating) > 0 ? Number(work.rating) : null,
+    year: work.year || null,
     genres: JSON.parse(work.genres_json || "[]"),
     language: "Português (BR)",
-    latestChapter: work.__latestChapter || 0,
+    metadataLanguages: {
+      title: work.title_language || null,
+      synopsis: work.synopsis_language || null,
+    },
+    chapterCount: Number(work.chapter_count || 0),
+    latestChapter: Number(work.latest_chapter || 0),
     sources: [
       {
         id: work.source,
@@ -385,7 +603,6 @@ function serializeWork(work) {
         available: true,
       },
     ],
-    chapters: work.__chapters || [],
   };
 }
 
@@ -416,6 +633,8 @@ async function dashboardStats() {
     latestSuccessfulRun,
     adultRun,
     failures,
+    activity,
+    providerHealth,
     stat,
   ] = await Promise.all([
     get(
@@ -444,7 +663,8 @@ async function dashboardStats() {
        FROM assets WHERE status = 'available' GROUP BY asset_kind`,
     ),
     get(
-      `SELECT started_at, finished_at, status, provider, imported_count, error
+      `SELECT started_at, finished_at, status, provider, imported_count, error,
+              job_type, examined_count, changed_count, request_count, duration_ms
          FROM sync_runs ORDER BY started_at DESC LIMIT 1`,
     ),
     get(
@@ -461,6 +681,13 @@ async function dashboardStats() {
       `SELECT COUNT(*) AS total FROM sync_runs
        WHERE status = 'failed' AND started_at >= datetime('now', '-24 hours')`,
     ),
+    get(
+      `SELECT COUNT(*) AS runs,
+              COALESCE(SUM(request_count), 0) AS requests,
+              COALESCE(SUM(changed_count), 0) AS changed
+       FROM sync_runs WHERE started_at >= datetime('now', '-24 hours')`,
+    ),
+    get("SELECT * FROM provider_health WHERE provider='mangadex'"),
     fsp.statfs(dataDir),
   ]);
 
@@ -476,11 +703,13 @@ async function dashboardStats() {
   const successfulSyncAgeSeconds = secondsSince(
     latestSuccessfulRun?.finished_at || latestSuccessfulRun?.started_at,
   );
-  const syncState = readSyncState();
   const adultSyncAgeSeconds = secondsSince(adultRun?.finished_at || adultRun?.started_at);
-  const adultSyncState = readSyncState(ADULT_SYNC_OFFSET_FILE);
+  const [syncState, adultSyncState] = await Promise.all([
+    readSyncCursor("public", "incremental"),
+    readSyncCursor("adult", "incremental"),
+  ]);
   const latestSyncState = latestRun?.provider === "mangadex-adult" ? adultSyncState : syncState;
-  const workerHealthy = successfulSyncAgeSeconds !== null && successfulSyncAgeSeconds < 180;
+  const workerHealthy = successfulSyncAgeSeconds !== null && successfulSyncAgeSeconds < 1_800;
 
   return {
     generatedAt: new Date().toISOString(),
@@ -489,6 +718,11 @@ async function dashboardStats() {
       database: true,
       worker: workerHealthy,
       storage: assetsBytes < assetLimitBytes && diskFreeBytes >= minimumFreeBytes,
+      storageWarning: diskFreeBytes < warningFreeBytes,
+      providerCircuitOpen: Boolean(
+        providerHealth?.circuit_open_until &&
+        Date.parse(`${providerHealth.circuit_open_until.replace(" ", "T")}Z`) > Date.now(),
+      ),
     },
     catalog: {
       databaseTotal: Number(works?.total || 0),
@@ -525,6 +759,7 @@ async function dashboardStats() {
         : 0,
       assetLimitBytes,
       minimumFreeBytes,
+      warningFreeBytes,
     },
     sync: {
       provider: latestRun?.provider || "mangadex",
@@ -534,19 +769,29 @@ async function dashboardStats() {
       lastFinishedAt: latestRun?.finished_at || null,
       ageSeconds: syncAgeSeconds,
       failures24h: Number(failures?.total || 0),
+      runs24h: Number(activity?.runs || 0),
+      requests24h: Number(activity?.requests || 0),
+      changed24h: Number(activity?.changed || 0),
       error: latestRun?.error || null,
-      offset: latestSyncState.offset,
-      providerTotal: latestSyncState.total,
-      stateUpdatedAt: latestSyncState.updatedAt,
+      offset: Number(latestSyncState.offset || 0),
+      providerTotal: Number(latestSyncState.provider_total || 0),
+      stateUpdatedAt: latestSyncState.updated_at || null,
+      jobType: latestRun?.job_type || null,
+      examinedLastRun: Number(latestRun?.examined_count || 0),
+      changedLastRun: Number(latestRun?.changed_count || 0),
+      requestsLastRun: Number(latestRun?.request_count || 0),
+      durationMs: Number(latestRun?.duration_ms || 0),
+      providerFailures: Number(providerHealth?.consecutive_failures || 0),
+      providerNextRetryAt: providerHealth?.next_retry_at || null,
     },
     adultSync: {
       status: adultRun?.status || "not_started",
       importedLastRun: Number(adultRun?.imported_count || 0),
       lastFinishedAt: adultRun?.finished_at || null,
       ageSeconds: adultSyncAgeSeconds,
-      offset: adultSyncState.offset,
-      providerTotal: adultSyncState.total,
-      stateUpdatedAt: adultSyncState.updatedAt,
+      offset: Number(adultSyncState.offset || 0),
+      providerTotal: Number(adultSyncState.provider_total || 0),
+      stateUpdatedAt: adultSyncState.updated_at || null,
     },
   };
 }
@@ -573,34 +818,69 @@ app.get("/api/v1/admin/dashboard", async (req, res, next) => {
   }
 });
 
-async function attachLocalChapters(rows) {
+async function attachChapterSummaries(rows) {
   if (!rows.length) return rows;
   const ids = rows.map((work) => work.id);
   const placeholders = ids.map(() => "?").join(",");
   const chapterRows = await all(
-    `SELECT * FROM chapters WHERE work_id IN (${placeholders}) AND language = ?
-     ORDER BY CAST(chapter_number AS REAL) DESC, published_at DESC`,
+    `SELECT work_id,
+            COUNT(DISTINCT COALESCE(volume_number, '') || ':' ||
+              COALESCE(chapter_number, external_id)) AS chapter_count,
+            MAX(CAST(chapter_number AS REAL)) AS latest_chapter
+     FROM chapters WHERE work_id IN (${placeholders}) AND language = ?
+     GROUP BY work_id`,
     [...ids, "pt-BR"],
   );
-  const byWork = new Map();
-  for (const chapter of chapterRows) {
-    if (!byWork.has(chapter.work_id)) byWork.set(chapter.work_id, []);
-    byWork.get(chapter.work_id).push({
-      id: chapter.id,
-      number: Number(chapter.chapter_number) || 0,
-      title: chapter.title,
-      language: "Português (BR)",
-      releasedAt: chapter.published_at || "",
-      read: false,
-      scanlationGroup: chapter.scanlation_group,
-    });
-  }
+  const byWork = new Map(chapterRows.map((chapter) => [chapter.work_id, chapter]));
   for (const work of rows) {
-    const localChapters = byWork.get(work.id) || [];
-    work.__chapters = localChapters;
-    work.__latestChapter = localChapters[0]?.number || 0;
+    const summary = byWork.get(work.id);
+    work.chapter_count = Number(summary?.chapter_count || 0);
+    work.latest_chapter = Number(summary?.latest_chapter || 0);
   }
   return rows;
+}
+
+function ftsQuery(value) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean)
+    .slice(0, 8)
+    .map((token) => `${token}*`)
+    .join(" AND ");
+}
+
+function serializeChapter(chapter) {
+  return {
+    id: chapter.id,
+    number: Number(chapter.chapter_number) || 0,
+    numberLabel: chapter.chapter_number || "?",
+    volume: chapter.volume_number || null,
+    title: chapter.title || `Capítulo ${chapter.chapter_number || "?"}`,
+    language: "Português (BR)",
+    releasedAt: chapter.published_at || "",
+    scanlationGroup: chapter.scanlation_group,
+  };
+}
+
+function groupChapterReleases(rows) {
+  const groups = new Map();
+  for (const chapter of rows) {
+    const key = chapter.chapter_number
+      ? `${chapter.volume_number || ""}:${chapter.chapter_number}`
+      : chapter.external_id;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(chapter);
+  }
+  return [...groups.values()].map((releases) => {
+    const [primary, ...alternatives] = releases;
+    return {
+      ...serializeChapter(primary),
+      alternatives: alternatives.map(serializeChapter),
+    };
+  });
 }
 
 app.get("/api/v1/catalog", async (req, res, next) => {
@@ -613,7 +893,7 @@ app.get("/api/v1/catalog", async (req, res, next) => {
       [adult, limit, (page - 1) * limit],
     );
     const count = await get("SELECT count(*) AS total FROM works WHERE is_adult = ?", [adult]);
-    await attachLocalChapters(rows);
+    await attachChapterSummaries(rows);
     res.json({ results: rows.map(serializeWork), page, limit, total: count.total });
   } catch (error) {
     next(error);
@@ -624,25 +904,16 @@ app.get("/api/v1/search", async (req, res, next) => {
     const query = String(req.query.q || "").trim();
     if (query.length < 2) return res.json({ results: [] });
     const adult = req.query.adult === "true" ? 1 : 0;
-    let rows = await all(
-      "SELECT * FROM works WHERE is_adult = ? AND (title LIKE ? OR alternative_title LIKE ?) ORDER BY updated_at DESC LIMIT 24",
-      [adult, `%${query}%`, `%${query}%`],
+    const match = ftsQuery(query);
+    if (!match) return res.json({ results: [] });
+    const rows = await all(
+      `SELECT w.* FROM works_fts f
+       JOIN works w ON w.id = f.work_id
+       WHERE works_fts MATCH ? AND w.is_adult = ?
+       ORDER BY bm25(works_fts), w.updated_at DESC LIMIT 24`,
+      [match, adult],
     );
-    if (!rows.length) {
-      const params = new URLSearchParams({ title: query, limit: "24" });
-      params.append("includes[]", "cover_art");
-      params.append("availableTranslatedLanguage[]", "pt-br");
-      const response = await fetch(`https://api.mangadex.org/manga?${params}`, {
-        signal: AbortSignal.timeout(15_000),
-        headers: { "user-agent": "MangaFlow pessoal/1.0" },
-      });
-      if (response.ok)
-        for (const item of (await response.json()).data || []) await upsertMangaDex(item);
-      rows = await all(
-        "SELECT * FROM works WHERE is_adult = ? AND (title LIKE ? OR alternative_title LIKE ?) ORDER BY updated_at DESC LIMIT 24",
-        [adult, `%${query}%`, `%${query}%`],
-      );
-    }
+    await attachChapterSummaries(rows);
     res.json({ results: rows.map(serializeWork) });
   } catch (error) {
     next(error);
@@ -652,19 +923,51 @@ app.get("/api/v1/works/:slug", async (req, res, next) => {
   try {
     const work = await get("SELECT * FROM works WHERE slug = ?", [req.params.slug]);
     if (!work) return res.status(404).json({ error: "Obra não encontrada" });
-    const chapters = await syncChapters(work);
-    const result = serializeWork(work);
-    result.chapters = chapters.map((chapter) => ({
-      id: chapter.id,
-      number: Number(chapter.chapter_number) || 0,
-      title: chapter.title,
-      language: "Português (BR)",
-      releasedAt: chapter.published_at || "",
-      read: false,
-      scanlationGroup: chapter.scanlation_group,
-    }));
-    result.latestChapter = result.chapters[0]?.number || 0;
-    res.json(result);
+    await attachChapterSummaries([work]);
+    res.json(serializeWork(work));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/v1/works/:slug/chapters", async (req, res, next) => {
+  try {
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
+    const work = await get("SELECT id FROM works WHERE slug = ?", [req.params.slug]);
+    if (!work) return res.status(404).json({ error: "Obra não encontrada" });
+    const rows = await all(
+      `SELECT * FROM chapters WHERE work_id = ? AND language = 'pt-BR'
+       ORDER BY CAST(chapter_number AS REAL) DESC, published_at DESC, updated_at DESC`,
+      [work.id],
+    );
+    const grouped = groupChapterReleases(rows);
+    const offset = (page - 1) * limit;
+    res.json({
+      results: grouped.slice(offset, offset + limit),
+      page,
+      limit,
+      total: grouped.length,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/v1/chapters/:chapterId", async (req, res, next) => {
+  try {
+    const chapter = await get(
+      `SELECT c.*, w.slug AS work_slug, w.title AS work_title
+       FROM chapters c JOIN works w ON w.id = c.work_id
+       WHERE c.id = ? AND c.language = 'pt-BR'`,
+      [req.params.chapterId],
+    );
+    if (!chapter) return res.status(404).json({ error: "Capítulo não encontrado" });
+    res.json({
+      ...serializeChapter(chapter),
+      workSlug: chapter.work_slug,
+      workTitle: chapter.work_title,
+    });
   } catch (error) {
     next(error);
   }
@@ -738,7 +1041,8 @@ app.post("/api/v1/admin/sync", async (req, res, next) => {
   try {
     if (!adminToken || req.get("x-admin-token") !== adminToken)
       return res.status(401).json({ error: "Não autorizado" });
-    res.json(await syncCatalog());
+    const mode = req.query.mode === "full" ? "full" : "incremental";
+    res.json(await syncCatalog({ mode }));
   } catch (error) {
     next(error);
   }
@@ -748,31 +1052,69 @@ app.post("/api/v1/admin/sync-adult", async (req, res, next) => {
   try {
     if (!adminToken || req.get("x-admin-token") !== adminToken)
       return res.status(401).json({ error: "Não autorizado" });
-    res.json(await syncCatalog({ adult: true }));
+    const mode = req.query.mode === "full" ? "full" : "incremental";
+    res.json(await syncCatalog({ adult: true, mode }));
   } catch (error) {
     next(error);
   }
 });
 
-async function syncChaptersBatch(limit) {
+async function syncChaptersBatchUnsafe(limit) {
+  const runId = nowId();
+  const stats = { startedAt: Date.now(), examined: 0, changed: 0, requests: 0 };
+  await run(
+    "INSERT INTO sync_runs (id, status, provider, job_type) VALUES (?, 'running', 'mangadex-chapters', 'chapter_batch')",
+    [runId],
+  );
   const candidates = await all(
-    `SELECT w.* FROM works w
-     LEFT JOIN (SELECT work_id, COUNT(*) count FROM chapters GROUP BY work_id) c ON c.work_id = w.id
-     WHERE w.source = 'mangadex' AND c.count IS NULL
-     ORDER BY w.updated_at DESC
+    `SELECT w.* FROM works w JOIN work_sync_state s ON s.work_id = w.id
+     WHERE w.source = 'mangadex' AND s.next_check_at <= CURRENT_TIMESTAMP
+     ORDER BY s.next_check_at, w.updated_at DESC
      LIMIT ?`,
     [limit],
   );
   const results = [];
   for (const work of candidates) {
+    stats.examined += 1;
     try {
-      const chapters = await syncChapters(work);
-      results.push({ workId: work.id, slug: work.slug, chapters: chapters.length });
+      const result = await syncChapters(work, stats);
+      stats.changed += result.changed;
+      const emptyPtbr = result.chapters.length === 0 ? 1 : 0;
+      const interval = emptyPtbr || work.status === "Completo" ? "+7 days" : "+6 hours";
+      await run(
+        `UPDATE work_sync_state SET last_checked_at=CURRENT_TIMESTAMP,
+         last_success_at=CURRENT_TIMESTAMP, next_check_at=datetime('now', ?), empty_ptbr=?,
+         consecutive_failures=0, last_error=NULL, updated_at=CURRENT_TIMESTAMP WHERE work_id=?`,
+        [interval, emptyPtbr, work.id],
+      );
+      results.push({
+        workId: work.id,
+        slug: work.slug,
+        chapters: result.chapters.length,
+        changed: result.changed,
+      });
     } catch (error) {
+      const state = await get("SELECT consecutive_failures FROM work_sync_state WHERE work_id=?", [
+        work.id,
+      ]);
+      const failures = Number(state?.consecutive_failures || 0) + 1;
+      const delay = ["+15 minutes", "+1 hour", "+6 hours", "+1 day"][Math.min(failures - 1, 3)];
+      await run(
+        `UPDATE work_sync_state SET last_checked_at=CURRENT_TIMESTAMP,
+         next_check_at=datetime('now', ?), consecutive_failures=?, last_error=?,
+         updated_at=CURRENT_TIMESTAMP WHERE work_id=?`,
+        [delay, failures, String(error.message || error).slice(0, 500), work.id],
+      );
       results.push({ workId: work.id, slug: work.slug, error: String(error.message || error) });
+      if (error.status === 503) break;
     }
   }
-  return { processed: results.length, results };
+  await finishSyncRun(runId, "succeeded", stats);
+  return { processed: results.length, requests: stats.requests, changed: stats.changed, results };
+}
+
+async function syncChaptersBatch(limit) {
+  return singleFlight("chapters", () => syncChaptersBatchUnsafe(limit));
 }
 
 app.post("/api/v1/admin/sync-chapters", async (req, res, next) => {
@@ -787,6 +1129,10 @@ app.post("/api/v1/admin/sync-chapters", async (req, res, next) => {
 });
 app.use((error, _req, res, _next) => {
   console.error(error);
+  if (error.retryAt) {
+    const seconds = Math.max(1, Math.ceil((error.retryAt.getTime() - Date.now()) / 1000));
+    res.set("Retry-After", String(seconds));
+  }
   res.status(error.status || 500).json({ error: error.message || "Erro interno" });
 });
 

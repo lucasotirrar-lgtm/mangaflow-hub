@@ -22,13 +22,13 @@ type ApiWork = {
   kind: ContentKind;
   ageRating: "Livre" | "14" | "16" | "18+";
   status: "Em andamento" | "Completo" | "Hiato";
-  rating: number;
-  year: number;
+  rating: number | null;
+  year: number | null;
   genres: string[];
   language: string;
   latestChapter: number;
   sources: CatalogItem["sources"];
-  chapters: ApiChapter[];
+  chapters?: ApiChapter[];
 };
 
 async function request<T>(path: string): Promise<T> {
@@ -47,7 +47,7 @@ function mapWork(work: ApiWork): CatalogItem {
   return {
     ...work,
     kind: work.kind,
-    chapters: work.chapters.map((chapter) => ({ ...chapter, read: false })),
+    chapters: (work.chapters || []).map((chapter) => ({ ...chapter, read: false })),
   };
 }
 

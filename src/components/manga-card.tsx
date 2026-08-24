@@ -36,9 +36,11 @@ export function MangaCard({ manga }: { manga: CatalogItem }) {
           </span>
         </div>
         <div className="absolute inset-x-3 bottom-3 flex items-end justify-between">
-          <span className="flex items-center gap-1 rounded-full bg-background/80 px-2 py-1 text-xs font-bold text-star backdrop-blur">
-            <Star className="h-3 w-3 fill-current" /> {manga.rating}
-          </span>
+          {manga.rating !== null && (
+            <span className="flex items-center gap-1 rounded-full bg-background/80 px-2 py-1 text-xs font-bold text-star backdrop-blur">
+              <Star className="h-3 w-3 fill-current" /> {manga.rating}
+            </span>
+          )}
           <Play className="h-8 w-8 rounded-full bg-primary p-2 text-primary-foreground opacity-0 transition group-hover:opacity-100" />
         </div>
       </button>
@@ -48,7 +50,8 @@ export function MangaCard({ manga }: { manga: CatalogItem }) {
             {manga.title}
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            Cap. {manga.latestChapter} · {manga.sources[0]?.label}
+            {manga.latestChapter > 0 ? `Cap. ${manga.latestChapter} · ` : ""}
+            {manga.sources[0]?.label}
           </p>
         </button>
         <button

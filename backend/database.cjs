@@ -22,6 +22,13 @@ const all = (sql, params = []) =>
     db.all(sql, params, (error, rows) => (error ? reject(error) : resolve(rows))),
   );
 
+async function ensureColumn(table, column, definition) {
+  const columns = await all(`PRAGMA table_info(${table})`);
+  if (!columns.some((item) => item.name === column)) {
+    await run(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
 async function initialize() {
   await run("PRAGMA journal_mode = WAL");
   await run("PRAGMA synchronous = NORMAL");
@@ -89,8 +96,86 @@ async function initialize() {
     imported_count INTEGER NOT NULL DEFAULT 0,
     error TEXT
   )`);
+
+  await ensureColumn("works", "provider_updated_at", "TEXT");
+  await ensureColumn("works", "title_language", "TEXT");
+  await ensureColumn("works", "synopsis_language", "TEXT");
+  await ensureColumn("sync_runs", "job_type", "TEXT NOT NULL DEFAULT 'catalog_incremental'");
+  await ensureColumn("sync_runs", "examined_count", "INTEGER NOT NULL DEFAULT 0");
+  await ensureColumn("sync_runs", "changed_count", "INTEGER NOT NULL DEFAULT 0");
+  await ensureColumn("sync_runs", "request_count", "INTEGER NOT NULL DEFAULT 0");
+  await ensureColumn("sync_runs", "duration_ms", "INTEGER NOT NULL DEFAULT 0");
+
+  await run(`CREATE TABLE IF NOT EXISTS sync_cursors (
+    provider TEXT NOT NULL,
+    lane TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    offset INTEGER NOT NULL DEFAULT 0,
+    high_water_mark TEXT,
+    provider_total INTEGER NOT NULL DEFAULT 0,
+    last_full_at TEXT,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(provider, lane, mode)
+  )`);
+  await run(`CREATE TABLE IF NOT EXISTS work_sync_state (
+    work_id TEXT PRIMARY KEY REFERENCES works(id) ON DELETE CASCADE,
+    last_checked_at TEXT,
+    next_check_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_success_at TEXT,
+    empty_ptbr INTEGER NOT NULL DEFAULT 0,
+    consecutive_failures INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`);
+  await run(`CREATE TABLE IF NOT EXISTS provider_health (
+    provider TEXT PRIMARY KEY,
+    consecutive_failures INTEGER NOT NULL DEFAULT 0,
+    next_retry_at TEXT,
+    circuit_open_until TEXT,
+    last_error TEXT,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`);
+
+  await run(`CREATE VIRTUAL TABLE IF NOT EXISTS works_fts USING fts5(
+    work_id UNINDEXED,
+    title,
+    alternative_title,
+    tokenize='unicode61 remove_diacritics 2'
+  )`);
+  await run(`CREATE TRIGGER IF NOT EXISTS works_fts_insert AFTER INSERT ON works BEGIN
+    INSERT INTO works_fts(work_id, title, alternative_title)
+    VALUES (new.id, new.title, COALESCE(new.alternative_title, ''));
+  END`);
+  await run(`CREATE TRIGGER IF NOT EXISTS works_fts_update AFTER UPDATE OF title, alternative_title ON works BEGIN
+    DELETE FROM works_fts WHERE work_id = old.id;
+    INSERT INTO works_fts(work_id, title, alternative_title)
+    VALUES (new.id, new.title, COALESCE(new.alternative_title, ''));
+  END`);
+  await run(`CREATE TRIGGER IF NOT EXISTS works_fts_delete AFTER DELETE ON works BEGIN
+    DELETE FROM works_fts WHERE work_id = old.id;
+  END`);
+  const ftsCount = await get("SELECT COUNT(*) AS total FROM works_fts");
+  if (Number(ftsCount?.total || 0) === 0) {
+    await run(`INSERT INTO works_fts(work_id, title, alternative_title)
+      SELECT id, title, COALESCE(alternative_title, '') FROM works`);
+  }
+
+  await run(`INSERT OR IGNORE INTO work_sync_state
+      (work_id, last_checked_at, next_check_at, last_success_at, empty_ptbr)
+    SELECT w.id,
+           CURRENT_TIMESTAMP,
+           CASE WHEN w.status = 'Completo'
+             THEN datetime('now', '+7 days')
+             ELSE datetime('now', '+6 hours')
+           END,
+           CURRENT_TIMESTAMP,
+           CASE WHEN EXISTS (SELECT 1 FROM chapters c WHERE c.work_id = w.id) THEN 0 ELSE 1 END
+    FROM works w`);
   await run("CREATE INDEX IF NOT EXISTS works_title_idx ON works(title)");
+  await run("CREATE INDEX IF NOT EXISTS works_provider_updated_idx ON works(provider_updated_at)");
   await run("CREATE INDEX IF NOT EXISTS chapters_work_idx ON chapters(work_id, chapter_number)");
+  await run("CREATE INDEX IF NOT EXISTS chapter_schedule_idx ON work_sync_state(next_check_at)");
+  await run("CREATE INDEX IF NOT EXISTS sync_runs_started_idx ON sync_runs(started_at)");
 }
 
 module.exports = { all, dataDir, db, get, initialize, run };

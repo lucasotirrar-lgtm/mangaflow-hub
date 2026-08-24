@@ -3,7 +3,14 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export type AdminDashboardStats = {
   generatedAt: string;
-  health: { api: boolean; database: boolean; worker: boolean; storage: boolean };
+  health: {
+    api: boolean;
+    database: boolean;
+    worker: boolean;
+    storage: boolean;
+    storageWarning: boolean;
+    providerCircuitOpen: boolean;
+  };
   catalog: {
     databaseTotal: number;
     siteVisible: number;
@@ -33,6 +40,7 @@ export type AdminDashboardStats = {
     diskUsedPercent: number;
     assetLimitBytes: number;
     minimumFreeBytes: number;
+    warningFreeBytes: number;
   };
   sync: {
     provider: string;
@@ -42,10 +50,15 @@ export type AdminDashboardStats = {
     lastFinishedAt: string | null;
     ageSeconds: number | null;
     failures24h: number;
+    runs24h: number;
+    requests24h: number;
+    changed24h: number;
     error: string | null;
     offset: number;
     providerTotal: number;
     stateUpdatedAt: string | null;
+    providerFailures: number;
+    providerNextRetryAt: string | null;
   };
   adultSync: {
     status: string;

@@ -1,4 +1,4 @@
-import type { CatalogItem } from "@/types/content";
+import type { CatalogItem, Chapter } from "@/types/content";
 
 export const catalog: CatalogItem[] = [];
 const apiBase = (import.meta.env["VITE_CATALOG_API_URL"] || "").replace(/\/$/, "");
@@ -15,6 +15,18 @@ async function request<T>(path: string): Promise<T> {
   if (!response.ok) throw new Error(`Catálogo indisponível (${response.status})`);
   return (await response.json()) as T;
 }
+
+const normalizeWork = (work: CatalogItem): CatalogItem => ({
+  ...work,
+  chapters: work.chapters || [],
+});
+
+export type ChapterPageResponse = {
+  results: Chapter[];
+  page: number;
+  limit: number;
+  total: number;
+};
 
 export const catalogService = {
   async list(): Promise<CatalogItem[]> {
@@ -37,11 +49,12 @@ export const catalogService = {
       limit: String(limit),
       adult: String(includeAdult),
     });
-    return request<CatalogPageResponse>(`/api/v1/catalog?${params.toString()}`);
+    const payload = await request<CatalogPageResponse>(`/api/v1/catalog?${params.toString()}`);
+    return { ...payload, results: payload.results.map(normalizeWork) };
   },
   async getBySlug(slug: string): Promise<CatalogItem | undefined> {
     try {
-      return await request<CatalogItem>(`/api/v1/works/${encodeURIComponent(slug)}`);
+      return normalizeWork(await request<CatalogItem>(`/api/v1/works/${encodeURIComponent(slug)}`));
     } catch {
       return undefined;
     }
@@ -51,7 +64,17 @@ export const catalogService = {
     if (!term) return [];
     return (
       await request<{ results: CatalogItem[] }>(`/api/v1/search?q=${encodeURIComponent(term)}`)
-    ).results;
+    ).results.map(normalizeWork);
+  },
+  async chapters(slug: string, page = 1, limit = 100): Promise<ChapterPageResponse> {
+    return request<ChapterPageResponse>(
+      `/api/v1/works/${encodeURIComponent(slug)}/chapters?page=${page}&limit=${limit}`,
+    );
+  },
+  async chapter(chapterId: string) {
+    return request<Chapter & { workSlug: string; workTitle: string }>(
+      `/api/v1/chapters/${encodeURIComponent(chapterId)}`,
+    );
   },
   async pages(chapterId: string) {
     return request<{ pages: Array<{ index: number; url: string }> }>(

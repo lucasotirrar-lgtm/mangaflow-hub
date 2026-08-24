@@ -13,11 +13,10 @@ function Reader() {
   const [error, setError] = useState("");
   useEffect(() => {
     catalogService
-      .getBySlug(slug)
-      .then(async (work) => {
-        const selected = work?.chapters.find((item) => item.id === chapter);
-        if (!work || !selected) throw new Error("Capítulo não encontrado");
-        setTitle(work.title);
+      .chapter(chapter)
+      .then(async (selected) => {
+        if (selected.workSlug !== slug) throw new Error("Capítulo não encontrado");
+        setTitle(selected.workTitle);
         setChapterNumber(String(selected.number));
         const result = await catalogService.pages(chapter);
         setPages(result.pages);

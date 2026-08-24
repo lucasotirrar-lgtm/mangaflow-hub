@@ -69,10 +69,12 @@ function Home() {
             {feature.synopsis}
           </p>
           <div className="mt-5 flex flex-wrap items-center gap-4 text-sm">
-            <span className="flex items-center gap-1 font-bold text-star">
-              <Star className="h-4 w-4 fill-current" />
-              {feature.rating}
-            </span>
+            {feature.rating !== null && (
+              <span className="flex items-center gap-1 font-bold text-star">
+                <Star className="h-4 w-4 fill-current" />
+                {feature.rating}
+              </span>
+            )}
             <span>{feature.status}</span>
             {feature.latestChapter > 0 && <span>Cap. {feature.latestChapter}</span>}
           </div>
