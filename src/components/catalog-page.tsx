@@ -5,36 +5,53 @@ import { CatalogSkeleton, ProductState } from "@/components/product-states";
 import { catalogService } from "@/services/catalog-service";
 import type { CatalogItem } from "@/types/content";
 
+export type CatalogSearch = {
+  age?: string | undefined;
+  kind?: string | undefined;
+  limit?: number | undefined;
+  page?: number | undefined;
+  status?: string | undefined;
+};
+
 export function CatalogPage({
   title = "Descobrir",
   description = "Encontre sua próxima leitura em português do Brasil.",
-  initialAge = "todos",
+  search,
+  onSearchChange,
 }: {
   title?: string;
   description?: string;
-  initialAge?: string;
+  search: CatalogSearch;
+  onSearchChange: (search: CatalogSearch) => void;
 }) {
-  const pageSize = 48;
-  const [kind, setKind] = useState("todos");
-  const [age, setAge] = useState(initialAge);
-  const [status, setStatus] = useState("todos");
+  const kind = search.kind ?? "todos";
+  const age = search.age ?? "todos";
+  const status = search.status ?? "todos";
+  const pageSize = search.limit ?? 48;
   const [items, setItems] = useState<CatalogItem[]>([]);
-  const [page, setPage] = useState(1);
+  const page = search.page ?? 1;
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
-  const includeAdult = age === "18+";
-
   useEffect(() => {
     let active = true;
     setLoading(true);
     setFailed(false);
     catalogService
-      .catalogPage({ page, limit: pageSize, includeAdult })
+      .catalogPage({ page, limit: pageSize, kind, age, status })
       .then((response) => {
         if (!active) return;
         setItems(response.results);
         setTotal(response.total);
+        if (response.page !== page) {
+          onSearchChange({
+            age: search.age,
+            kind: search.kind,
+            limit: pageSize,
+            page: response.page,
+            status: search.status,
+          });
+        }
       })
       .catch(() => {
         if (active) setFailed(true);
@@ -45,30 +62,21 @@ export function CatalogPage({
     return () => {
       active = false;
     };
-  }, [includeAdult, page]);
+  }, [age, kind, onSearchChange, page, pageSize, search.age, search.kind, search.status, status]);
 
-  const filtered = useMemo(
-    () =>
-      items.filter(
-        (item) =>
-          (kind === "todos" || item.kind === kind) &&
-          (age === "todos" || item.ageRating === age) &&
-          (status === "todos" || item.status === status),
-      ),
-    [items, kind, age, status],
-  );
   const reset = () => {
-    setKind("todos");
-    setAge("todos");
-    setStatus("todos");
-    setPage(1);
+    onSearchChange({ limit: pageSize });
   };
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const hasLocalFilters = kind !== "todos" || age !== "todos" || status !== "todos";
+  const hasFilters = kind !== "todos" || age !== "todos" || status !== "todos";
   const goToPage = (nextPage: number) => {
-    setPage(Math.min(Math.max(nextPage, 1), totalPages));
+    onSearchChange({ ...search, page: Math.min(Math.max(nextPage, 1), totalPages) });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+  const setFilter = (key: "kind" | "age" | "status", value: string) =>
+    onSearchChange({ ...search, [key]: value === "todos" ? undefined : value, page: 1 });
+  const start = total ? (page - 1) * pageSize + 1 : 0;
+  const end = Math.min(page * pageSize, total);
 
   return (
     <main className="page-shell pb-28">
@@ -84,9 +92,9 @@ export function CatalogPage({
         <span className="result-count">
           {loading
             ? "Carregando"
-            : hasLocalFilters
-              ? `${filtered.length} nesta página · ${total.toLocaleString("pt-BR")} no catálogo`
-              : `${total.toLocaleString("pt-BR")} ${total === 1 ? "obra" : "obras"}`}
+            : total
+              ? `${start.toLocaleString("pt-BR")}–${end.toLocaleString("pt-BR")} de ${total.toLocaleString("pt-BR")} ${total === 1 ? "obra" : "obras"}`
+              : "Nenhuma obra encontrada"}
         </span>
       </div>
       <div className="filter-bar">
@@ -94,8 +102,7 @@ export function CatalogPage({
           label="Formato"
           value={kind}
           set={(value) => {
-            setKind(value);
-            setPage(1);
+            setFilter("kind", value);
           }}
           options={[
             ["todos", "Todos"],
@@ -108,14 +115,11 @@ export function CatalogPage({
           label="Faixa etária"
           value={age}
           set={(value) => {
-            setAge(value);
-            setPage(1);
+            setFilter("age", value);
           }}
           options={[
             ["todos", "Todas"],
-            ["Livre", "Livre"],
             ["14", "14"],
-            ["16", "16"],
             ["18+", "18+"],
           ]}
         />
@@ -123,8 +127,7 @@ export function CatalogPage({
           label="Status"
           value={status}
           set={(value) => {
-            setStatus(value);
-            setPage(1);
+            setFilter("status", value);
           }}
           options={[
             ["todos", "Todos"],
@@ -133,7 +136,17 @@ export function CatalogPage({
             ["Hiato", "Hiato"],
           ]}
         />
-        {(kind !== "todos" || age !== "todos" || status !== "todos") && (
+        <Filter
+          label="Por página"
+          value={String(pageSize)}
+          set={(value) => onSearchChange({ ...search, limit: Number(value), page: 1 })}
+          options={[
+            ["24", "24 títulos"],
+            ["48", "48 títulos"],
+            ["60", "60 títulos"],
+          ]}
+        />
+        {hasFilters && (
           <button onClick={reset} className="clear-filter">
             <X />
             Limpar
@@ -153,10 +166,10 @@ export function CatalogPage({
             </button>
           }
         />
-      ) : filtered.length ? (
+      ) : items.length ? (
         <>
           <div className="catalog-grid mt-8">
-            {filtered.map((item) => (
+            {items.map((item) => (
               <MangaCard key={item.id} manga={item} />
             ))}
           </div>
@@ -188,6 +201,10 @@ function CatalogPagination({
   totalPages: number;
   goToPage: (page: number) => void;
 }) {
+  const visiblePages = useMemo(() => {
+    const first = Math.max(1, Math.min(page - 2, totalPages - 4));
+    return Array.from({ length: Math.min(5, totalPages - first + 1) }, (_, index) => first + index);
+  }, [page, totalPages]);
   if (totalPages <= 1) return null;
   return (
     <nav
@@ -210,6 +227,18 @@ function CatalogPagination({
       >
         Anterior
       </button>
+      {visiblePages.map((number) => (
+        <button
+          key={number}
+          type="button"
+          className="secondary-button min-w-10 disabled:cursor-not-allowed disabled:opacity-50"
+          onClick={() => goToPage(number)}
+          disabled={number === page}
+          aria-current={number === page ? "page" : undefined}
+        >
+          {number.toLocaleString("pt-BR")}
+        </button>
+      ))}
       <span className="text-sm font-bold text-muted-foreground">
         Página {page.toLocaleString("pt-BR")} de {totalPages.toLocaleString("pt-BR")}
       </span>

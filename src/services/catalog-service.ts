@@ -39,16 +39,28 @@ export const catalogService = {
     page = 1,
     limit = 48,
     includeAdult = false,
+    kind = "todos",
+    age = "todos",
+    status = "todos",
+    query = "",
   }: {
     page?: number;
     limit?: number;
     includeAdult?: boolean;
+    kind?: string;
+    age?: string;
+    status?: string;
+    query?: string;
   } = {}): Promise<CatalogPageResponse> {
     const params = new URLSearchParams({
       page: String(page),
       limit: String(limit),
-      adult: String(includeAdult),
     });
+    const requestedAge = age === "todos" && includeAdult ? "18+" : age;
+    if (requestedAge !== "todos") params.set("age", requestedAge);
+    if (kind !== "todos") params.set("kind", kind);
+    if (status !== "todos") params.set("status", status);
+    if (query.trim()) params.set("q", query.trim());
     const payload = await request<CatalogPageResponse>(`/api/v1/catalog?${params.toString()}`);
     return { ...payload, results: payload.results.map(normalizeWork) };
   },

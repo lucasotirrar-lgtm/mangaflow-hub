@@ -53,7 +53,10 @@ user_roles. O token fica no servidor e não chega ao navegador.
 backend/database.cjs cria works, chapters, assets, sync_runs, sync_cursors,
 work_sync_state, provider_health e o índice FTS5. SQLite usa WAL,
 synchronous=NORMAL, busy_timeout=5000 e chaves estrangeiras.
-O catálogo é paginado em 48 itens e is_adult=1 só aparece no filtro adulto.
+O catálogo usa 48 itens por padrão e permite 24, 48 ou 60 na interface (a API
+impõe teto duro de 60). `kind`, `status` e `age` são filtrados no SQLite antes
+da paginação; `manga` agrega manga e manhua. Conteúdo adulto só aparece quando
+o filtro adulto é solicitado.
 O provedor público informa cerca de 11.949 obras e a janela atual chega a
 aproximadamente 10 mil posições; ainda é pendência particionar por data/gênero
 ou outra estratégia para garantir o restante. O provedor adulto informa 1.934.
@@ -72,15 +75,15 @@ backoff e circuito.
 
 É um retrato; o dashboard é a fonte atualizada em tempo real.
 
-| Métrica                    |                              Valor |
-| -------------------------- | ---------------------------------: |
-| Obras no banco             |                             12.254 |
-| Capítulos                  |                            224.683 |
-| Assets                     |                              4.148 |
-| Banco SQLite               |             aproximadamente 236 MB |
-| Espaço livre               |              aproximadamente 47 GB |
-| Integridade SQLite         |                                 ok |
-| Violações de chave externa |                                  0 |
+| Métrica                    |                  Valor |
+| -------------------------- | ---------------------: |
+| Obras no banco             |                 12.254 |
+| Capítulos                  |                224.683 |
+| Assets                     |                  4.148 |
+| Banco SQLite               | aproximadamente 236 MB |
+| Espaço livre               |  aproximadamente 47 GB |
+| Integridade SQLite         |                     ok |
+| Violações de chave externa |                      0 |
 
 Homepage, health, ready, catálogo, obra e capítulos responderam 200; API,
 worker e web estavam ativos e a API estava saudável.

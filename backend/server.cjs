@@ -885,16 +885,49 @@ function groupChapterReleases(rows) {
 
 app.get("/api/v1/catalog", async (req, res, next) => {
   try {
-    const limit = Math.min(Math.max(Number(req.query.limit) || 24, 1), 48);
-    const page = Math.max(Number(req.query.page) || 1, 1);
-    const adult = req.query.adult === "true" ? 1 : 0;
-    const rows = await all(
-      "SELECT * FROM works WHERE is_adult = ? ORDER BY updated_at DESC LIMIT ? OFFSET ?",
-      [adult, limit, (page - 1) * limit],
-    );
-    const count = await get("SELECT count(*) AS total FROM works WHERE is_adult = ?", [adult]);
+    // Keep public list responses bounded: this endpoint runs on the Always Free VM.
+    const limit = Math.min(Math.max(Number(req.query.limit) || 48, 1), 60);
+    let page = Math.max(Number(req.query.page) || 1, 1);
+    const requestedAge = String(req.query.age || "");
+    const adult = requestedAge === "18+" || req.query.adult === "true" ? 1 : 0;
+    const kind = String(req.query.kind || "todos");
+    const status = String(req.query.status || "todos");
+    const query = String(req.query.q || "").trim();
+    const clauses = ["w.is_adult = ?"];
+    const values = [adult];
+    let from = "FROM works w";
+    let orderBy = "w.updated_at DESC, w.id ASC";
+
+    if (kind === "manga") clauses.push("w.kind IN ('manga', 'manhua')");
+    else if (kind === "manhwa" || kind === "light-novel") {
+      clauses.push("w.kind = ?");
+      values.push(kind);
+    }
+    if (["Em andamento", "Completo", "Hiato"].includes(status)) {
+      clauses.push("w.status = ?");
+      values.push(status);
+    }
+    if (query.length >= 2) {
+      const match = ftsQuery(query);
+      if (match) {
+        from = "FROM works_fts f JOIN works w ON w.id = f.work_id";
+        clauses.unshift("works_fts MATCH ?");
+        values.unshift(match);
+        orderBy = "bm25(works_fts), w.updated_at DESC, w.id ASC";
+      }
+    }
+    const where = `WHERE ${clauses.join(" AND ")}`;
+    const count = await get(`SELECT count(*) AS total ${from} ${where}`, values);
+    const total = Number(count.total || 0);
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    page = Math.min(page, totalPages);
+    const rows = await all(`SELECT w.* ${from} ${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`, [
+      ...values,
+      limit,
+      (page - 1) * limit,
+    ]);
     await attachChapterSummaries(rows);
-    res.json({ results: rows.map(serializeWork), page, limit, total: count.total });
+    res.json({ results: rows.map(serializeWork), page, limit, total });
   } catch (error) {
     next(error);
   }

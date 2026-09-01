@@ -172,6 +172,9 @@ async function initialize() {
            CASE WHEN EXISTS (SELECT 1 FROM chapters c WHERE c.work_id = w.id) THEN 0 ELSE 1 END
     FROM works w`);
   await run("CREATE INDEX IF NOT EXISTS works_title_idx ON works(title)");
+  await run(
+    "CREATE INDEX IF NOT EXISTS works_catalog_filter_idx ON works(is_adult, kind, status, updated_at)",
+  );
   await run("CREATE INDEX IF NOT EXISTS works_provider_updated_idx ON works(provider_updated_at)");
   await run("CREATE INDEX IF NOT EXISTS chapters_work_idx ON chapters(work_id, chapter_number)");
   await run("CREATE INDEX IF NOT EXISTS chapter_schedule_idx ON work_sync_state(next_check_at)");
