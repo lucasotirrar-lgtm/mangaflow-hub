@@ -27,6 +27,14 @@ Capítulos com o mesmo volume/número são preservados como releases alternativo
 PostgreSQL para catálogo, Redis, Consumet, Suwayomi, AniList e múltiplas fontes são
 roadmap. Não devem ser documentados como serviços implantados.
 
-## Contrato de acesso +18
+## Estado real do acesso +18
 
-O catálogo geral pode ser consultado normalmente. Para uma obra `18+`, a API exige sessão válida, perfil com `age_verified_at` e consentimento vigente. Administradores continuam sujeitos à auditoria. O banco impede leitura direta autenticada sem verificação.
+O SQLite separa as obras com `is_adult`, e o catálogo público usa a faixa comum
+por padrão. Porém, a API Express atual ainda aceita `adult=true` nas rotas de
+catálogo/busca e não bloqueia o acesso direto por `slug`; o `age-gate` do
+frontend é somente uma barreira de interface. As políticas RLS da migração
+Supabase protegem as tabelas Supabase, mas não protegem o SQLite da Oracle.
+
+Se a intenção do produto for restringir conteúdo +18 a usuários verificados,
+isso ainda precisa ser implementado no servidor Express com sessão verificável.
+Não considerar o controle atual uma proteção de segurança.

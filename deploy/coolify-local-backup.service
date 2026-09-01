@@ -1,0 +1,13 @@
+[Unit]
+Description=Backup local verificavel dos dados VEXCLAUD e Dokploy
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/coolify-local-backup
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+PrivateTmp=true
+ProtectHome=true

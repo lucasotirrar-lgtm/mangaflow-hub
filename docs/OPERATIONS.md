@@ -159,8 +159,11 @@ Revise e publique somente arquivos intencionais:
 
     git status -sb
     git diff --check
-    git add README.md docs/OPERATIONS.md backend/server.cjs backend/worker.cjs \
+    git add README.md docs/OPERATIONS.md docs/PROJECT_HANDOFF.md \
+      docs/BACKEND_ARCHITECTURE.md backend/server.cjs backend/worker.cjs \
       package.json package-lock.json deploy/mangaflow-watchdog.sh \
+      deploy/coolify-local-backup.sh deploy/coolify-local-backup.service \
+      deploy/coolify-local-backup.timer \
       deploy/vexclaud-offsite-backup.sh deploy/vexclaud-offsite-backup.service \
       deploy/vexclaud-offsite-backup.timer deploy/verify-offsite-restore.sh
     git commit -m "otimiza operacao e backup do MangaFlow"

@@ -7,6 +7,7 @@ Express, SQLite persistente e sincronização controlada com MangaDex PT-BR.
 - Health: https://manga.vexclaud.site/api/v1/health
 - Operação e recuperação: [docs/OPERATIONS.md](docs/OPERATIONS.md)
 - Arquitetura: [docs/BACKEND_ARCHITECTURE.md](docs/BACKEND_ARCHITECTURE.md)
+- Handoff completo e estado atual: [docs/PROJECT_HANDOFF.md](docs/PROJECT_HANDOFF.md)
 
 ## Desenvolvimento
 

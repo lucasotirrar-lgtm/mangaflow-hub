@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup local diario dos dados VEXCLAUD e Dokploy
+
+[Timer]
+OnCalendar=*-*-* 02:15:00 UTC
+RandomizedDelaySec=10m
+Persistent=true
+
+[Install]
+WantedBy=timers.target
