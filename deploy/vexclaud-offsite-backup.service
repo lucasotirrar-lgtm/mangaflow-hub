@@ -11,3 +11,4 @@ IOSchedulingClass=best-effort
 IOSchedulingPriority=7
 PrivateTmp=true
 ProtectHome=read-only
+ReadWritePaths=/home/opc/.config/rclone

@@ -417,6 +417,11 @@ O upload só começa depois de validar os hashes locais, usa duas transferência
 executa `rclone check --one-way`, registra sucesso e notifica o Telegram. Falha
 também gera mensagem direta sem modelo de IA.
 
+O serviço usa `ProtectHome=read-only`, com a exceção mínima
+`ReadWritePaths=/home/opc/.config/rclone`, necessária para o `rclone` persistir
+refresh tokens sem liberar escrita no restante da home. Se esse caminho for
+removido, o upload pode aparentar sucesso enquanto o token renovado não é salvo.
+
 Instalação/reconciliação:
 
 ```sh
@@ -439,6 +444,14 @@ Primeira execução validada:
 - Drive Trabalho: aproximadamente 5,4 TB livres;
 - sucesso registrado em `2026-09-01T01:48:16Z`;
 - confirmação recebida no Telegram Oracle Sentinel.
+
+Execução diária seguinte também validada:
+
+- snapshot `20260901-022219`;
+- `rclone check`: zero diferenças e 11 arquivos correspondentes;
+- sucesso mais recente registrado em `2026-09-01T22:48:40Z`;
+- após corrigir a permissão de refresh do OAuth, não houve mais erro de
+  `read-only file system`.
 
 Restauração real executada a partir do Drive:
 
