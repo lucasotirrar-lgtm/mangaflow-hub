@@ -26,7 +26,9 @@ async function execute(name, url, timeoutMs) {
     if (Number.isFinite(retryAfter) && retryAfter > 0) error.retryAfterMs = retryAfter * 1000;
     throw error;
   }
-  console.log(`[${name}]`, await response.json());
+  const payload = await response.json();
+  console.log(`[${name}]`, payload);
+  return payload;
 }
 
 async function runLoop({ name, url, intervalMs, timeoutMs = 5 * 60 * 1000, immediate = true }) {
@@ -34,7 +36,11 @@ async function runLoop({ name, url, intervalMs, timeoutMs = 5 * 60 * 1000, immed
   while (true) {
     let delay = intervalMs;
     try {
-      await execute(name, url, timeoutMs);
+      const payload = await execute(name, url, timeoutMs);
+      const suggestedDelay = Number(payload?.retryAfterMs || 0);
+      if (Number.isFinite(suggestedDelay) && suggestedDelay > 0) {
+        delay = Math.max(delay, suggestedDelay);
+      }
     } catch (error) {
       delay = Math.max(delay, Number(error.retryAfterMs || 0));
       console.error(`[${name}]`, error.message);

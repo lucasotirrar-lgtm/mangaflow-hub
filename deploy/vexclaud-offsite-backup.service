@@ -1,0 +1,13 @@
+[Unit]
+Description=Upload verificado do backup VEXCLAUD para Google Drive
+Requires=network-online.target
+After=network-online.target coolify-local-backup.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/vexclaud-offsite-backup
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+PrivateTmp=true
+ProtectHome=read-only

@@ -6,7 +6,7 @@ Segredos nunca devem entrar neste arquivo, em commits ou em mensagens.
 ## Identidade e publicação
 
 - Repositório privado: lucasotirrar-lgtm/mangaflow-hub.
-- Branch padrão: main; branch desta entrega: agent/mangaflow-real-catalog.
+- Branch padrão e de produção: main.
 - Site: https://manga.vexclaud.site.
 - Stack: React/TanStack Start/Vite, Express, SQLite, Docker Compose e Traefik.
 - O repositório é ligado ao Lovable. Não force push, rebase, amend ou squash
@@ -62,26 +62,54 @@ ou outra estratégia para garantir o restante. O provedor adulto informa 1.934.
 
 Worker: incremental público a cada 15 min, adulto a cada 60 min e uma fila
 contínua de capítulos (até 100 obras vencidas por lote). Cada obra importa toda
-a paginação PT-BR disponível. A reconciliação completa roda semanalmente. Não
-há execuções sobrepostas; 429/503 aplicam backoff e circuito.
+a paginação PT-BR disponível. Quando não há obra vencida, a API informa a
+próxima verificação e o worker aguarda de 30 segundos a 15 minutos; enquanto há
+fila, mantém o intervalo de 1 segundo e o throughput máximo. A reconciliação
+completa roda semanalmente. Não há execuções sobrepostas; 429/503 aplicam
+backoff e circuito.
 
-## Snapshot validado em 14/08/2026
+## Snapshot validado em 01/09/2026
 
 É um retrato; o dashboard é a fonte atualizada em tempo real.
 
 | Métrica                    |                              Valor |
 | -------------------------- | ---------------------------------: |
-| Obras no banco             |                             11.939 |
-| Visíveis no catálogo comum |                             10.005 |
-| Adultas ocultas            |                              1.934 |
-| Capítulos                  |                            133.202 |
-| Banco + assets             | aproximadamente 2,35 GB (2,19 GiB) |
-| Espaço livre               |           aproximadamente 87,54 GB |
-| Provedor público/adulto    |                     11.949 / 1.934 |
-| Falhas nas últimas 24 h    |                                  0 |
+| Obras no banco             |                             12.254 |
+| Capítulos                  |                            224.683 |
+| Assets                     |                              4.148 |
+| Banco SQLite               |             aproximadamente 236 MB |
+| Espaço livre               |              aproximadamente 47 GB |
+| Integridade SQLite         |                                 ok |
+| Violações de chave externa |                                  0 |
 
-Homepage, /auth, health e catálogos responderam 200; dashboard sem token
-respondeu 401; API, worker e web estavam saudáveis.
+Homepage, health, ready, catálogo, obra e capítulos responderam 200; API,
+worker e web estavam ativos e a API estava saudável.
+
+## Backup e alertas
+
+`coolify-local-backup.timer` executa diariamente às 02:15 UTC com atraso
+aleatório de até dez minutos. O snapshot inclui Dokploy/PostgreSQL, Open WebUI,
+MangaFlow, OtakuStream e configurações de roteamento; bancos e arquivos são
+validados antes da publicação do diretório final.
+
+Após o backup local, `vexclaud-offsite-backup.service` envia o snapshot para
+`trabalho:VEXCLAUD/backups/system/<timestamp>`, valida o conteúdo remoto e
+notifica o Telegram. O remoto `trabalho:` deve apontar exclusivamente para a
+conta Google Drive Trabalho; não usar a conta pessoal Lucas.
+
+O Hermes Oracle Sentinel entrega alertas diretamente pelo Telegram, sem LLM:
+
+- `mangaflow-watchdog`: a cada 15 minutos, silencioso quando saudável;
+- disco raiz a partir de 80%, containers ausentes/parados, API indisponível ou
+  backup local com mais de 30 horas geram alerta;
+- sucesso do backup externo gera uma confirmação curta após checksum remoto.
+
+Auditar periodicamente:
+
+    systemctl status coolify-local-backup.timer coolify-local-backup.service
+    systemctl status vexclaud-offsite-backup.service
+    hermes cron list
+    hermes cron incidents
 
 ## Desenvolvimento local
 
@@ -119,9 +147,11 @@ Revise e publique somente arquivos intencionais:
 
     git status -sb
     git diff --check
-    git add README.md docs/ backend/ deploy/
-    git commit -m "documenta operacao e backup do MangaFlow"
-    git push -u origin agent/mangaflow-real-catalog
+    git add README.md docs/OPERATIONS.md backend/server.cjs backend/worker.cjs \
+      package.json package-lock.json deploy/mangaflow-watchdog.sh \
+      deploy/vexclaud-offsite-backup.sh deploy/vexclaud-offsite-backup.service
+    git commit -m "otimiza operacao e backup do MangaFlow"
+    git push origin main
     gh api repos/lucasotirrar-lgtm/mangaflow-hub --jq "{private,default_branch,full_name}"
 
 Nunca adicionar .env, tokens, chaves, dumps ou credenciais. Avaliar

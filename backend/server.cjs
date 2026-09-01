@@ -1060,18 +1060,31 @@ app.post("/api/v1/admin/sync-adult", async (req, res, next) => {
 });
 
 async function syncChaptersBatchUnsafe(limit) {
-  const runId = nowId();
-  const stats = { startedAt: Date.now(), examined: 0, changed: 0, requests: 0 };
-  await run(
-    "INSERT INTO sync_runs (id, status, provider, job_type) VALUES (?, 'running', 'mangadex-chapters', 'chapter_batch')",
-    [runId],
-  );
   const candidates = await all(
     `SELECT w.* FROM works w JOIN work_sync_state s ON s.work_id = w.id
      WHERE w.source = 'mangadex' AND s.next_check_at <= CURRENT_TIMESTAMP
      ORDER BY s.next_check_at, w.updated_at DESC
      LIMIT ?`,
     [limit],
+  );
+  if (candidates.length === 0) {
+    const next = await get(
+      `SELECT MIN(next_check_at) AS next_check_at
+         FROM work_sync_state s JOIN works w ON w.id = s.work_id
+        WHERE w.source = 'mangadex'`,
+    );
+    const nextCheckAt = next?.next_check_at || null;
+    const untilNext = nextCheckAt
+      ? new Date(`${nextCheckAt.replace(" ", "T")}Z`).getTime() - Date.now()
+      : 15 * 60 * 1000;
+    const retryAfterMs = Math.min(15 * 60 * 1000, Math.max(30 * 1000, untilNext));
+    return { processed: 0, requests: 0, changed: 0, results: [], nextCheckAt, retryAfterMs };
+  }
+  const runId = nowId();
+  const stats = { startedAt: Date.now(), examined: 0, changed: 0, requests: 0 };
+  await run(
+    "INSERT INTO sync_runs (id, status, provider, job_type) VALUES (?, 'running', 'mangadex-chapters', 'chapter_batch')",
+    [runId],
   );
   const results = [];
   for (const work of candidates) {
