@@ -6,6 +6,19 @@ remote='trabalho:VEXCLAUD/backups/system'
 config=/home/opc/.config/rclone/rclone.conf
 hermes=(/home/opc/.hermes/hermes-agent/venv/bin/python -m hermes_cli.main)
 
+notify() {
+  runuser -u opc -- env HOME=/home/opc "${hermes[@]}" send --to telegram --quiet "$1" || true
+}
+
+notify_failure() {
+  status=$?
+  trap - ERR
+  notify "❌ Backup VEXCLAUD falhou. O snapshot local foi preservado; verifique vexclaud-offsite-backup.service."
+  exit "$status"
+}
+
+trap notify_failure ERR
+
 latest=$(find "$base" -mindepth 1 -maxdepth 1 -type d -name '20??????-??????' -printf '%T@ %p\n' \
   | sort -nr | head -n 1 | cut -d' ' -f2-)
 test -n "$latest"
@@ -24,5 +37,4 @@ rclone check "$latest" "$remote/$stamp" --config "$config" --one-way --checkers 
 install -d -m 700 /var/lib/vexclaud-backup
 printf '%s %s\n' "$(date -u +%FT%TZ)" "$stamp" >/var/lib/vexclaud-backup/offsite-last-success
 
-runuser -u opc -- env HOME=/home/opc "${hermes[@]}" send --to telegram --quiet \
-  "✅ Backup VEXCLAUD concluído: $stamp (local + Google Drive, checksums validados)."
+notify "✅ Backup VEXCLAUD concluído: $stamp (local + Google Drive, checksums validados)."

@@ -92,7 +92,8 @@ aleatório de até dez minutos. O snapshot inclui Dokploy/PostgreSQL, Open WebUI
 MangaFlow, OtakuStream e configurações de roteamento; bancos e arquivos são
 validados antes da publicação do diretório final.
 
-Após o backup local, `vexclaud-offsite-backup.service` envia o snapshot para
+Após o backup local, `vexclaud-offsite-backup.timer` aciona diariamente entre
+03:00 e 03:10 UTC o `vexclaud-offsite-backup.service`, que envia o snapshot para
 `trabalho:VEXCLAUD/backups/system/<timestamp>`, valida o conteúdo remoto e
 notifica o Telegram. O remoto `trabalho:` deve apontar exclusivamente para a
 conta Google Drive Trabalho; não usar a conta pessoal Lucas.
@@ -102,14 +103,25 @@ O Hermes Oracle Sentinel entrega alertas diretamente pelo Telegram, sem LLM:
 - `mangaflow-watchdog`: a cada 15 minutos, silencioso quando saudável;
 - disco raiz a partir de 80%, containers ausentes/parados, API indisponível ou
   backup local com mais de 30 horas geram alerta;
+- backup externo ausente, com mais de 36 horas ou serviço em falha gera alerta;
 - sucesso do backup externo gera uma confirmação curta após checksum remoto.
+
+O remoto ainda usa temporariamente o identificador OAuth compartilhado do
+`rclone`. Ele funciona hoje, mas será aposentado durante 2026. Criar um cliente
+OAuth próprio e gratuito no projeto Google da conta Trabalho e executar
+`rclone config reconnect trabalho:` antes dessa retirada; nunca reutilizar
+credenciais das contas Lucas.
 
 Auditar periodicamente:
 
     systemctl status coolify-local-backup.timer coolify-local-backup.service
-    systemctl status vexclaud-offsite-backup.service
+    systemctl status vexclaud-offsite-backup.timer vexclaud-offsite-backup.service
     hermes cron list
     hermes cron incidents
+
+Testar uma restauração sem tocar no banco em produção:
+
+    sudo /usr/local/sbin/verify-vexclaud-offsite-restore
 
 ## Desenvolvimento local
 
@@ -149,7 +161,8 @@ Revise e publique somente arquivos intencionais:
     git diff --check
     git add README.md docs/OPERATIONS.md backend/server.cjs backend/worker.cjs \
       package.json package-lock.json deploy/mangaflow-watchdog.sh \
-      deploy/vexclaud-offsite-backup.sh deploy/vexclaud-offsite-backup.service
+      deploy/vexclaud-offsite-backup.sh deploy/vexclaud-offsite-backup.service \
+      deploy/vexclaud-offsite-backup.timer deploy/verify-offsite-restore.sh
     git commit -m "otimiza operacao e backup do MangaFlow"
     git push origin main
     gh api repos/lucasotirrar-lgtm/mangaflow-hub --jq "{private,default_branch,full_name}"

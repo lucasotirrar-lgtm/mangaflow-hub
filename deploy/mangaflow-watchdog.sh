@@ -30,6 +30,18 @@ elif (( $(date +%s) - latest_epoch > 108000 )); then
   alerts+=("backup local com mais de 30 horas")
 fi
 
+offsite_status=/var/lib/vexclaud-backup/offsite-last-success
+offsite_epoch=$(sudo -n stat -c %Y "$offsite_status" 2>/dev/null || true)
+if [[ -z "$offsite_epoch" ]]; then
+  alerts+=("nenhum backup externo confirmado")
+elif (( $(date +%s) - offsite_epoch > 129600 )); then
+  alerts+=("backup externo com mais de 36 horas")
+fi
+
+if [[ $(systemctl is-failed vexclaud-offsite-backup.service 2>/dev/null || true) == failed ]]; then
+  alerts+=("servico de backup externo em falha")
+fi
+
 if ((${#alerts[@]})); then
   printf 'ALERTA VEXCLAUD ORACLE\n'
   printf -- '- %s\n' "${alerts[@]}"
