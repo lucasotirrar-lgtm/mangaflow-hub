@@ -1,7 +1,7 @@
 # Auditoria e plano do frontend — MangaFlow
 
 Data da auditoria: 2026-09-01  
-Estado: **planejado; nenhuma correcao deste documento foi aplicada ainda**.
+Estado: **Fase 1 concluída e publicada em 2026-09-01; Fases 2 e 3 pendentes**.
 
 ## Escopo e metodo
 
@@ -70,6 +70,23 @@ Ha tambem um bloqueador de leitura: a obra `Air Gear` lista capitulos, mas o end
 
 **Criterios de aceite:** um filtro `manhwa` deve retornar total e paginas baseados apenas em manhwa; voltar/avancar/recarregar preserva a URL; a ultima pagina tem a quantidade correta; nenhuma pagina filtrada mostra itens de outro formato.
 
+#### Execução registrada — 2026-09-01
+
+- Publicado no commit `4a2c09a` em `main` e `agent/mangaflow-real-catalog`.
+- A API aplica `kind`, `status` e `age` antes de calcular `total` e paginar;
+  `manga` agrega os registros internos `manga` e `manhua`.
+- O limite duro da API passou a ser 60. A interface oferece 24, 48 e 60
+  títulos por página, mostra intervalo real, cinco páginas próximas e mantém
+  filtros/página na URL.
+- Validação publicada: `kind=manhwa&limit=60` retornou 1.296 obras, 60 itens e
+  22 páginas; a página 2 exibiu 61–120 de 1.296 e preservou a URL. Um pedido
+  além do fim com `manhwa&status=Completo` foi normalizado para página 29,
+  retornando os 13 itens finais de 685.
+- `npm run lint`, `npm run typecheck` e `npm run build` passaram localmente e
+  o build ARM de produção também passou. API, worker e web existentes foram
+  recriados sem criar recurso Oracle. Backups de rollback foram mantidos na
+  VPS com sufixo `20260901T235442Z`.
+
 ### Fase 2 — busca, obra e leitor
 
 1. Paginar a busca no servidor e alinhar a promessa da UI (titulo, alternativo e, se aprovado, genero). Reutilizar os mesmos filtros de idade.
@@ -98,4 +115,3 @@ Ha tambem um bloqueador de leitura: a obra `Air Gear` lista capitulos, mas o end
 ## Ordem recomendada e limite de escopo
 
 Comecar pela Fase 1. Ela resolve diretamente paginacao e quantidade de titulos por pagina sem mascarar o problema no navegador. Em seguida tratar o 503 de leitura como incidente separado, porque um ajuste visual nao pode fabricar paginas que a API nao entrega. As Fases 2 e 3 so devem entrar depois de os criterios de aceite da fase anterior estarem validados em producao.
-
