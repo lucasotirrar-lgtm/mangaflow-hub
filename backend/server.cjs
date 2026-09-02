@@ -893,7 +893,10 @@ app.get("/api/v1/catalog", async (req, res, next) => {
     const kind = String(req.query.kind || "todos");
     const status = String(req.query.status || "todos");
     const query = String(req.query.q || "").trim();
-    const clauses = ["w.is_adult = ?"];
+    const clauses = [
+      "w.is_adult = ?",
+      "EXISTS (SELECT 1 FROM chapters c WHERE c.work_id = w.id AND c.language = 'pt-BR')",
+    ];
     const values = [adult];
     let from = "FROM works w";
     let orderBy = "w.updated_at DESC, w.id ASC";
@@ -943,7 +946,7 @@ app.get("/api/v1/search", async (req, res, next) => {
     if (!match) return res.json({ results: [], page, limit, total: 0 });
     const genreMatch = `%${query.toLowerCase()}%`;
     const where =
-      "(w.id IN (SELECT work_id FROM works_fts WHERE works_fts MATCH ?) OR LOWER(w.genres_json) LIKE ?) AND w.is_adult = ?";
+      "(w.id IN (SELECT work_id FROM works_fts WHERE works_fts MATCH ?) OR LOWER(w.genres_json) LIKE ?) AND w.is_adult = ? AND EXISTS (SELECT 1 FROM chapters c WHERE c.work_id = w.id AND c.language = 'pt-BR')";
     const values = [match, genreMatch, adult];
     const count = await get(
       `SELECT count(*) AS total FROM works_fts f JOIN works w ON w.id = f.work_id WHERE ${where}`,
@@ -1108,7 +1111,7 @@ async function syncChaptersBatchUnsafe(limit) {
   const candidates = await all(
     `SELECT w.* FROM works w JOIN work_sync_state s ON s.work_id = w.id
      WHERE w.source = 'mangadex' AND s.next_check_at <= CURRENT_TIMESTAMP
-     ORDER BY s.next_check_at, w.updated_at DESC
+     ORDER BY s.empty_ptbr DESC, s.next_check_at, w.updated_at DESC
      LIMIT ?`,
     [limit],
   );
@@ -1138,7 +1141,11 @@ async function syncChaptersBatchUnsafe(limit) {
       const result = await syncChapters(work, stats);
       stats.changed += result.changed;
       const emptyPtbr = result.chapters.length === 0 ? 1 : 0;
-      const interval = emptyPtbr || work.status === "Completo" ? "+7 days" : "+6 hours";
+      const interval = emptyPtbr
+        ? "+24 hours"
+        : work.status === "Completo"
+          ? "+7 days"
+          : "+6 hours";
       await run(
         `UPDATE work_sync_state SET last_checked_at=CURRENT_TIMESTAMP,
          last_success_at=CURRENT_TIMESTAMP, next_check_at=datetime('now', ?), empty_ptbr=?,

@@ -17,7 +17,7 @@ function Detail() {
   const [chapterTotal, setChapterTotal] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState(false);
-  const { guard } = useAgeGate();
+  const { guard, modal } = useAgeGate();
   const { add, entries } = useLocalLibrary();
 
   useEffect(() => {
@@ -207,6 +207,7 @@ function Detail() {
           </div>
         </aside>
       </div>
+      {modal}
     </main>
   );
 }
