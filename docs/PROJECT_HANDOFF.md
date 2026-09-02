@@ -1,8 +1,10 @@
 # Handoff completo — MangaFlow Hub / Oracle principal
 
-Atualizado em 01/09/2026 UTC. Este documento descreve o estado observado e
-validado, não um desenho futuro. Leia também `AGENTS.md`, `README.md`,
-`docs/OPERATIONS.md` e `docs/BACKEND_ARCHITECTURE.md` antes de alterar produção.
+Atualizado em 01/09/2026 UTC, com auditoria complementar em 02/09/2026 UTC.
+Este documento descreve o estado observado e validado, não um desenho futuro.
+Leia também `AGENTS.md`, `README.md`, `docs/OPERATIONS.md`,
+`docs/BACKEND_ARCHITECTURE.md` e `docs/FINAL_AUDIT_2026-09-02.md` antes de
+alterar produção.
 
 ## 1. Resumo executivo
 
