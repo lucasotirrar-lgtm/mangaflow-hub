@@ -4,6 +4,8 @@ import { BookmarkPlus, Check, ChevronRight, Languages, Play, Server, Star } from
 import { catalogService } from "@/services/catalog-service";
 import { CatalogSkeleton, ProductState } from "@/components/product-states";
 import type { CatalogItem } from "@/types/content";
+import { useAgeGate } from "@/components/age-gate";
+import { useLocalLibrary } from "@/lib/local-library";
 
 export const Route = createFileRoute("/obra/$slug")({ component: Detail });
 
@@ -14,6 +16,9 @@ function Detail() {
   const [chapterPage, setChapterPage] = useState(1);
   const [chapterTotal, setChapterTotal] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState(false);
+  const { guard } = useAgeGate();
+  const { add, entries } = useLocalLibrary();
 
   useEffect(() => {
     setItem(undefined);
@@ -31,11 +36,14 @@ function Detail() {
   const loadMore = async () => {
     if (!item || loadingMore || item.chapters.length >= chapterTotal) return;
     setLoadingMore(true);
+    setLoadMoreError(false);
     try {
       const next = chapterPage + 1;
       const payload = await catalogService.chapters(slug, next);
       setItem({ ...item, chapters: [...item.chapters, ...payload.results] });
       setChapterPage(next);
+    } catch {
+      setLoadMoreError(true);
     } finally {
       setLoadingMore(false);
     }
@@ -48,6 +56,7 @@ function Detail() {
       </main>
     );
   const latest = item.chapters[0];
+  const inLibrary = entries.some((entry) => entry.slug === item.slug);
   return (
     <main className="pb-28">
       <section className="detail-hero">
@@ -104,26 +113,26 @@ function Detail() {
             </div>
             <div className="mt-7 flex flex-wrap gap-3">
               {latest ? (
-                <Link
-                  to="/ler/$slug/$chapter"
-                  params={{ slug: item.slug, chapter: latest.id }}
+                <button
                   className="primary-button"
+                  onClick={() =>
+                    guard(item.ageRating === "18+", () =>
+                      window.location.assign(
+                        `/ler/${encodeURIComponent(item.slug)}/${encodeURIComponent(latest.id)}`,
+                      ),
+                    )
+                  }
                 >
-                  <Play />
-                  Ler capítulo {latest.number}
-                </Link>
+                  <Play /> Ler capítulo {latest.number}
+                </button>
               ) : (
                 <span className="secondary-button cursor-not-allowed opacity-60">
                   Sem capítulo PT-BR disponível
                 </span>
               )}
-              <button
-                className="secondary-button"
-                disabled
-                title="A biblioteca será liberada no próximo ciclo"
-              >
+              <button className="secondary-button" disabled={inLibrary} onClick={() => add(item)}>
                 <BookmarkPlus />
-                Adicionar à biblioteca
+                {inLibrary ? "Na biblioteca" : "Adicionar à biblioteca"}
               </button>
             </div>
           </div>
@@ -170,6 +179,11 @@ function Detail() {
             <button className="secondary-button mt-5" onClick={loadMore} disabled={loadingMore}>
               {loadingMore ? "Carregando…" : "Carregar mais capítulos"}
             </button>
+          )}
+          {loadMoreError && (
+            <p className="mt-3 text-sm text-destructive">
+              Não foi possível carregar mais capítulos. Tente novamente.
+            </p>
           )}
         </section>
         <aside>

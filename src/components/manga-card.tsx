@@ -2,12 +2,15 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { BookmarkPlus, Play, Star } from "lucide-react";
 import type { CatalogItem } from "@/types/content";
 import { useAgeGate } from "@/components/age-gate";
+import { useLocalLibrary } from "@/lib/local-library";
 
 const kindLabel = { manga: "Mangá", manhwa: "Manhwa", "light-novel": "Light novel" } as const;
 
 export function MangaCard({ manga }: { manga: CatalogItem }) {
   const navigate = useNavigate();
   const { guard, modal } = useAgeGate();
+  const { add, entries } = useLocalLibrary();
+  const inLibrary = entries.some((entry) => entry.slug === manga.slug);
   const open = () =>
     guard(manga.ageRating === "18+", () =>
       navigate({ to: "/obra/$slug", params: { slug: manga.slug } }),
@@ -55,7 +58,14 @@ export function MangaCard({ manga }: { manga: CatalogItem }) {
           </p>
         </button>
         <button
-          aria-label={`Adicionar ${manga.title} à biblioteca`}
+          aria-label={
+            inLibrary
+              ? `${manga.title} já está na biblioteca`
+              : `Adicionar ${manga.title} à biblioteca`
+          }
+          aria-pressed={inLibrary}
+          disabled={inLibrary}
+          onClick={() => add(manga)}
           className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-surface hover:text-primary"
         >
           <BookmarkPlus className="h-4 w-4" />

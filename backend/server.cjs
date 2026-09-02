@@ -935,19 +935,30 @@ app.get("/api/v1/catalog", async (req, res, next) => {
 app.get("/api/v1/search", async (req, res, next) => {
   try {
     const query = String(req.query.q || "").trim();
-    if (query.length < 2) return res.json({ results: [] });
+    const limit = Math.min(Math.max(Number(req.query.limit) || 24, 1), 60);
+    let page = Math.max(Number(req.query.page) || 1, 1);
+    if (query.length < 2) return res.json({ results: [], page, limit, total: 0 });
     const adult = req.query.adult === "true" ? 1 : 0;
     const match = ftsQuery(query);
-    if (!match) return res.json({ results: [] });
+    if (!match) return res.json({ results: [], page, limit, total: 0 });
+    const genreMatch = `%${query.toLowerCase()}%`;
+    const where = "(works_fts MATCH ? OR LOWER(w.genres_json) LIKE ?) AND w.is_adult = ?";
+    const values = [match, genreMatch, adult];
+    const count = await get(
+      `SELECT count(*) AS total FROM works_fts f JOIN works w ON w.id = f.work_id WHERE ${where}`,
+      values,
+    );
+    const total = Number(count.total || 0);
+    page = Math.min(page, Math.max(1, Math.ceil(total / limit)));
     const rows = await all(
       `SELECT w.* FROM works_fts f
        JOIN works w ON w.id = f.work_id
-       WHERE works_fts MATCH ? AND w.is_adult = ?
-       ORDER BY bm25(works_fts), w.updated_at DESC LIMIT 24`,
-      [match, adult],
+       WHERE ${where}
+       ORDER BY w.updated_at DESC, w.id ASC LIMIT ? OFFSET ?`,
+      [...values, limit, (page - 1) * limit],
     );
     await attachChapterSummaries(rows);
-    res.json({ results: rows.map(serializeWork) });
+    res.json({ results: rows.map(serializeWork), page, limit, total });
   } catch (error) {
     next(error);
   }

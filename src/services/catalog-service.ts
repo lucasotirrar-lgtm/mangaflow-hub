@@ -71,12 +71,22 @@ export const catalogService = {
       return undefined;
     }
   },
-  async search(query: string): Promise<CatalogItem[]> {
+  async search(
+    query: string,
+    page = 1,
+    limit = 24,
+    includeAdult = false,
+  ): Promise<CatalogPageResponse> {
     const term = query.trim();
-    if (!term) return [];
-    return (
-      await request<{ results: CatalogItem[] }>(`/api/v1/search?q=${encodeURIComponent(term)}`)
-    ).results.map(normalizeWork);
+    if (!term) return { results: [], page, limit, total: 0 };
+    const params = new URLSearchParams({
+      q: term,
+      page: String(page),
+      limit: String(limit),
+      adult: String(includeAdult),
+    });
+    const payload = await request<CatalogPageResponse>(`/api/v1/search?${params.toString()}`);
+    return { ...payload, results: payload.results.map(normalizeWork) };
   },
   async chapters(slug: string, page = 1, limit = 100): Promise<ChapterPageResponse> {
     return request<ChapterPageResponse>(

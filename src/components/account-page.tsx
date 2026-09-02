@@ -1,205 +1,122 @@
 import { Link } from "@tanstack/react-router";
-import {
-  Bell,
-  BookMarked,
-  CheckCircle2,
-  Clock3,
-  Heart,
-  ListPlus,
-  LockKeyhole,
-  Settings,
-  ShieldCheck,
-  User,
-} from "lucide-react";
+import { Bell, BookMarked, Heart, ListPlus, Settings, User } from "lucide-react";
 import { MangaCard } from "@/components/manga-card";
 import { ProductState } from "@/components/product-states";
-import { catalog } from "@/services/catalog-service";
+import { useLocalLibrary, type LocalLibraryEntry } from "@/lib/local-library";
+import type { CatalogItem } from "@/types/content";
+
 const meta = {
-  biblioteca: [
+  biblioteca: [BookMarked, "Minha biblioteca", "Obras salvas neste dispositivo."],
+  favoritos: [Heart, "Favoritos", "Obras marcadas como favoritas neste dispositivo."],
+  listas: [
+    ListPlus,
+    "Minhas listas",
+    "Listas sincronizadas serão disponibilizadas em uma próxima atualização.",
+  ],
+  historico: [
     BookMarked,
-    "Minha biblioteca",
-    "Acompanhe suas leituras e veja o que recebeu capítulos novos.",
+    "Histórico",
+    "O histórico de leitura será exibido quando o progresso sincronizado estiver disponível.",
   ],
-  favoritos: [Heart, "Favoritos", "Obras que você quer manter sempre por perto."],
-  listas: [ListPlus, "Minhas listas", "Organize obras por tema, prioridade ou ocasião."],
-  historico: [Clock3, "Histórico", "Continue exatamente do ponto em que parou."],
-  perfil: [User, "Seu perfil", "Preferências e atividade da sua conta."],
-  configuracoes: [
-    Settings,
-    "Configurações",
-    "Aparência, privacidade, fontes e preferências de leitura.",
-  ],
-  notificacoes: [Bell, "Notificações", "Atualizações de capítulos, fontes e sistema."],
-  admin: [
-    ShieldCheck,
-    "Administração",
-    "Saúde do catálogo, provedores e processamento do servidor.",
-  ],
+  perfil: [User, "Seu perfil", "Preferências da sua conta."],
+  configuracoes: [Settings, "Configurações", "Preferências de aparência e leitura."],
+  notificacoes: [Bell, "Notificações", "Avisos de capítulos e do sistema."],
+  admin: [Settings, "Administração", "Use o painel administrativo autenticado."],
 } as const;
 export type AccountSection = keyof typeof meta;
+
+function toCard(entry: LocalLibraryEntry): CatalogItem {
+  return {
+    ...entry,
+    id: entry.slug,
+    synopsis: "",
+    rating: null,
+    year: null,
+    genres: [],
+    language: "Português (BR)",
+    chapterCount: 0,
+    chapters: [],
+  };
+}
+
 export function AccountPage({ section }: { section: AccountSection }) {
   const [Icon, title, description] = meta[section];
+  const { entries, remove, toggleFavorite } = useLocalLibrary();
+  const visible = section === "favoritos" ? entries.filter((entry) => entry.favorite) : entries;
+  const isCollection = section === "biblioteca" || section === "favoritos";
   return (
     <main className="page-shell pb-28">
       <div className="page-heading">
         <div>
           <span className="eyebrow">
             <Icon />
-            {section === "admin" ? "Área restrita" : "Espaço pessoal"}
+            Espaço pessoal
           </span>
           <h1>{title}</h1>
           <p>{description}</p>
         </div>
       </div>
-      {section === "biblioteca" || section === "favoritos" || section === "historico" ? (
-        <div className="catalog-grid">
-          {catalog
-            .filter((x) => section !== "favoritos" || (x.rating ?? 0) >= 4.7)
-            .slice(0, 4)
-            .map((x) => (
-              <MangaCard manga={x} key={x.id} />
-            ))}
-        </div>
-      ) : section === "listas" ? (
-        <div className="dashboard-grid">
-          <ListCard title="Quero ler" count={8} />
-          <ListCard title="Favoritos de fantasia" count={12} />
-          <ListCard title="Concluídos em 2026" count={4} />
-          <button className="new-list">
-            <ListPlus />
-            Criar nova lista
-          </button>
-        </div>
+      {isCollection ? (
+        visible.length ? (
+          <div className="space-y-6">
+            <div className="catalog-grid">
+              {visible.map((entry) => (
+                <MangaCard manga={toCard(entry)} key={entry.slug} />
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {visible.map((entry) => (
+                <div
+                  key={entry.slug}
+                  className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm"
+                >
+                  <span className="max-w-48 truncate">{entry.title}</span>
+                  <button className="text-primary" onClick={() => toggleFavorite(entry.slug)}>
+                    {entry.favorite ? "Remover favorito" : "Favoritar"}
+                  </button>
+                  <button className="text-destructive" onClick={() => remove(entry.slug)}>
+                    Remover
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <ProductState state="empty" />
+        )
+      ) : section === "listas" || section === "historico" || section === "notificacoes" ? (
+        <ProductState state="empty" />
       ) : section === "configuracoes" ? (
-        <SettingsPanel />
-      ) : section === "notificacoes" ? (
-        <div className="stack-list">
-          <Notice
-            title="Novo capítulo disponível"
-            text="A Herdeira da Lua recebeu o capítulo 84."
-          />
-          <Notice
-            title="Fonte alternativa ativada"
-            text="MangaDex assumiu temporariamente a obra Rosas de Inverno."
-          />
-          <Notice title="Sincronização concluída" text="Seu progresso foi salvo no servidor." />
+        <div className="settings-grid">
+          <section className="side-card">
+            <h2>Leitura</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Ajustes de leitura serão salvos quando a sincronização de conta for habilitada.
+            </p>
+          </section>
+          <section className="side-card">
+            <h2>Conteúdo adulto</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Ao abrir uma obra adulta, o site mostra um aviso e pede confirmação.
+            </p>
+          </section>
         </div>
-      ) : section === "admin" ? (
-        <AdminPanel />
       ) : section === "perfil" ? (
         <div className="profile-card">
           <div className="profile-avatar">Y</div>
           <div>
             <h2>Leitor Yae</h2>
-            <p>Conta pessoal · membro desde 2026</p>
+            <p>Entre em sua conta para sincronizar preferências entre dispositivos.</p>
           </div>
-          <Link to="/configuracoes" className="secondary-button">
-            Editar preferências
+          <Link to="/auth" className="secondary-button">
+            Entrar
           </Link>
         </div>
       ) : (
-        <ProductState state="empty" />
+        <Link to="/admin" className="secondary-button">
+          Abrir administração
+        </Link>
       )}
     </main>
-  );
-}
-function ListCard({ title, count }: { title: string; count: number }) {
-  return (
-    <button className="list-card">
-      <span className="grid h-12 w-12 place-items-center rounded-2xl bg-primary/15 text-primary">
-        <BookMarked />
-      </span>
-      <strong>{title}</strong>
-      <small>{count} obras</small>
-    </button>
-  );
-}
-function Notice({ title, text }: { title: string; text: string }) {
-  return (
-    <div className="notice">
-      <CheckCircle2 />
-      <div>
-        <strong>{title}</strong>
-        <p>{text}</p>
-      </div>
-      <span>Agora</span>
-    </div>
-  );
-}
-function SettingsPanel() {
-  return (
-    <div className="settings-grid">
-      <section className="side-card">
-        <h2>Aparência e leitura</h2>
-        <Setting title="Tema do aplicativo" value="Seguir preferência do dispositivo" />
-        <Setting title="Direção de leitura" value="Direita para esquerda" />
-        <Setting title="Pré-carregar páginas" value="2 páginas" />
-      </section>
-      <section className="side-card">
-        <h2>Conteúdo e privacidade</h2>
-        <Setting title="Conteúdo adulto" value="Confirmar antes de abrir" />
-        <Setting title="Histórico" value="Salvar no servidor" />
-        <Setting title="Dados offline" value="Somente favoritos" />
-      </section>
-      <section className="side-card">
-        <h2>Fontes</h2>
-        <Setting title="Biblioteca local" value="Principal · conectada" />
-        <Setting title="MangaDex" value="Alternativa · conectada" />
-        <Setting title="Suwayomi" value="Requer atenção" />
-      </section>
-    </div>
-  );
-}
-function Setting({ title, value }: { title: string; value: string }) {
-  return (
-    <button className="setting-row">
-      <div>
-        <strong>{title}</strong>
-        <span>{value}</span>
-      </div>
-      <span>›</span>
-    </button>
-  );
-}
-function AdminPanel() {
-  return (
-    <>
-      <div className="metrics">
-        <div>
-          <span>Obras indexadas</span>
-          <strong>1.248</strong>
-        </div>
-        <div>
-          <span>Capítulos locais</span>
-          <strong>8.532</strong>
-        </div>
-        <div>
-          <span>Fontes saudáveis</span>
-          <strong>3/4</strong>
-        </div>
-        <div>
-          <span>Fila de atualização</span>
-          <strong>12</strong>
-        </div>
-      </div>
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <section className="side-card">
-          <h2>Saúde dos provedores</h2>
-          <Notice title="Biblioteca local" text="Operacional · resposta em 42 ms" />
-          <Notice title="MangaDex" text="Operacional · fallback disponível" />
-        </section>
-        <section className="side-card">
-          <h2>Segurança</h2>
-          <div className="state-panel compact">
-            <LockKeyhole />
-            <h2>Operações protegidas</h2>
-            <p>
-              Importações, exclusões e credenciais ficam no backend. O navegador recebe apenas
-              permissões e resultados.
-            </p>
-          </div>
-        </section>
-      </div>
-    </>
   );
 }
