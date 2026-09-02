@@ -19,6 +19,10 @@ function formatReleaseDate(value: string) {
   }).format(date);
 }
 
+function formatChapterLabel(number: number) {
+  return number > 0 ? `Capítulo ${number}` : "Capítulo disponível";
+}
+
 function Detail() {
   const { slug } = Route.useParams();
   const [item, setItem] = useState<CatalogItem>();
@@ -81,6 +85,11 @@ function Detail() {
       </main>
     );
   const latest = item.chapters[0];
+  const latestLabel = latest
+    ? latest.number > 0
+      ? `Ler capítulo ${latest.number}`
+      : "Ler capítulo disponível"
+    : "";
   const inLibrary = entries.some((entry) => entry.slug === item.slug);
   return (
     <main className="pb-28">
@@ -148,10 +157,7 @@ function Detail() {
                     )
                   }
                 >
-                  <Play />
-                  {latest.number > 0
-                    ? `Ler capítulo ${latest.number}`
-                    : "Ler capítulo disponível"}
+                  <Play /> {latestLabel}
                 </button>
               ) : (
                 <span className="secondary-button cursor-not-allowed opacity-60">
@@ -188,11 +194,7 @@ function Detail() {
                     {chapter.read ? <Check /> : <span>{chapter.number}</span>}
                   </span>
                   <div>
-                    <strong>
-                      {chapter.number > 0
-                        ? `Capítulo ${chapter.number}`
-                        : "Capítulo disponível"}
-                    </strong>
+                    <strong>{formatChapterLabel(chapter.number)}</strong>
                     <small>
                       {chapter.title} · {formatReleaseDate(chapter.releasedAt)}
                     </small>
