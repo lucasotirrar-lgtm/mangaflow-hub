@@ -1,8 +1,21 @@
 # Plano completo para finalizar o MangaFlow Hub
 
 Data: 2026-09-02.
-Escopo deste arquivo: plano e auditoria. Nao implementar mudancas de produto
-sem uma aprovacao posterior.
+Escopo deste arquivo: plano, auditoria e registro das entregas executadas.
+
+## Execucao iniciada em 2026-09-02
+
+- Cadastro publico removido da rota `/auth`; a tela agora aceita somente login
+  administrativo por e-mail/senha ou Google.
+- Removida a acao `claimFirstAdmin`; nenhum usuario pode se promover pelo site.
+  A funcao admin precisa ser atribuida por convite/role no Supabase.
+- Capitulos sem numero agora aparecem como "Capitulo disponivel" no card, no
+  destaque da obra e na lista de capitulos, preservando o acesso ao leitor.
+- Datas de lancamento da obra foram normalizadas para formato local pt-BR.
+- Validacoes executadas: `npm run lint`, `npm run typecheck` e `npm run build`.
+
+As fases restantes abaixo continuam planejadas e nao foram consideradas
+concluidas apenas por esta primeira entrega.
 
 ## Objetivo
 

@@ -1,11 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useIsAdmin } from "@/hooks/use-auth";
-import { claimFirstAdmin } from "@/lib/admin.functions";
 import { MangaManager } from "@/components/admin/manga-manager";
 import { DestaqueManager } from "@/components/admin/destaque-manager";
 import { GeneroManager, NoticiaManager } from "@/components/admin/lista-managers";
@@ -38,27 +35,12 @@ function AdminPage() {
   const { user } = useAuth();
   const isAdmin = useIsAdmin(user?.id);
   const [aba, setAba] = useState<(typeof abas)[number]>("Visão geral");
-  const claim = useServerFn(claimFirstAdmin);
 
   async function sair() {
     await qc.cancelQueries();
     qc.clear();
     await supabase.auth.signOut();
     navigate({ to: "/auth", replace: true });
-  }
-
-  async function tornarAdmin() {
-    try {
-      const res = await claim({});
-      if (res.granted) {
-        toast.success("Você agora é administrador!");
-        window.location.reload();
-      } else {
-        toast.error("O site já possui um administrador.");
-      }
-    } catch {
-      toast.error("Não foi possível conceder o acesso.");
-    }
   }
 
   return (
@@ -82,15 +64,9 @@ function AdminPage() {
         <div className="card-surface mt-8 max-w-xl space-y-3 p-5">
           <h2 className="font-display text-lg font-extrabold">Acesso restrito</h2>
           <p className="text-sm text-muted-foreground">
-            Sua conta ainda não é administradora. Se você é o dono do site e ninguém assumiu o
-            painel ainda, clique abaixo para se tornar o administrador.
+            Esta conta está autenticada, mas não possui a função de administrador. Solicite um
+            convite ou a atribuição da função ao responsável pelo Supabase.
           </p>
-          <button
-            onClick={tornarAdmin}
-            className="rounded-full bg-gradient-primary px-5 py-2.5 text-sm font-bold text-primary-foreground"
-          >
-            Tornar-me administrador
-          </button>
         </div>
       )}
 

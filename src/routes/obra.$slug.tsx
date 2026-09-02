@@ -10,6 +10,15 @@ import { useAdultContent } from "@/lib/adult-content";
 
 export const Route = createFileRoute("/obra/$slug")({ component: Detail });
 
+function formatReleaseDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
 function Detail() {
   const { slug } = Route.useParams();
   const [item, setItem] = useState<CatalogItem>();
@@ -139,7 +148,7 @@ function Detail() {
                     )
                   }
                 >
-                  <Play /> Ler capítulo {latest.number}
+                  <Play /> {latest.number > 0 ? `Ler capítulo ${latest.number}` : "Ler capítulo disponível"}
                 </button>
               ) : (
                 <span className="secondary-button cursor-not-allowed opacity-60">
@@ -176,10 +185,10 @@ function Detail() {
                     {chapter.read ? <Check /> : <span>{chapter.number}</span>}
                   </span>
                   <div>
-                    <strong>Capítulo {chapter.number}</strong>
-                    <small>
-                      {chapter.title} · {chapter.releasedAt}
-                    </small>
+                  <strong>{chapter.number > 0 ? `Capítulo ${chapter.number}` : "Capítulo disponível"}</strong>
+                  <small>
+                      {chapter.title} · {formatReleaseDate(chapter.releasedAt)}
+                  </small>
                   </div>
                   <span className="ml-auto hidden text-xs text-muted-foreground sm:block">
                     {chapter.language}

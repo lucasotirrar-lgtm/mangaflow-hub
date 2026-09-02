@@ -25,7 +25,6 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [modo, setModo] = useState<"login" | "cadastro">("login");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [carregando, setCarregando] = useState(false);
@@ -34,19 +33,9 @@ function AuthPage() {
     e.preventDefault();
     setCarregando(true);
     try {
-      if (modo === "login") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
-        if (error) throw error;
-        navigate({ to: "/admin" });
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password: senha,
-          options: { emailRedirectTo: window.location.origin },
-        });
-        if (error) throw error;
-        toast.success("Conta criada! Confirme seu e-mail para entrar.");
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+      if (error) throw error;
+      navigate({ to: "/admin" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível continuar.");
     } finally {
@@ -69,10 +58,10 @@ function AuthPage() {
   return (
     <div className="mx-auto flex max-w-md flex-col px-4 py-16">
       <h1 className="font-display text-3xl font-extrabold">
-        <span className="text-gradient">{modo === "login" ? "Entrar" : "Criar conta"}</span>
+        <span className="text-gradient">Acesso administrativo</span>
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Acesso ao painel de administração da Yae Manga House.
+        Entre com uma conta autorizada para acessar o painel de administração.
       </p>
 
       <button
@@ -111,16 +100,9 @@ function AuthPage() {
           disabled={carregando}
           className="w-full rounded-full bg-gradient-primary px-6 py-3 font-display text-sm font-bold text-primary-foreground shadow-glow disabled:opacity-60"
         >
-          {carregando ? "Aguarde..." : modo === "login" ? "Entrar" : "Cadastrar"}
+          {carregando ? "Aguarde..." : "Entrar"}
         </button>
       </form>
-
-      <button
-        onClick={() => setModo(modo === "login" ? "cadastro" : "login")}
-        className="mt-5 text-sm text-muted-foreground hover:text-primary"
-      >
-        {modo === "login" ? "Não tenho conta — criar agora" : "Já tenho conta — entrar"}
-      </button>
     </div>
   );
 }
