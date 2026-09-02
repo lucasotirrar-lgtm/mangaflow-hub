@@ -19,6 +19,26 @@ Escopo deste arquivo: plano, auditoria e registro das entregas executadas.
 As fases restantes abaixo continuam planejadas e nao foram consideradas
 concluidas apenas por esta primeira entrega.
 
+### Implantacao e validacao de 2026-09-02
+
+- Frontend construido diretamente em ARM64 na Oracle e implantado somente no
+  servico `web`, sem reconstruir API ou worker.
+- Projeto Compose real confirmado como `deploy`.
+- API permaneceu saudavel e o worker permaneceu ativo durante o deploy.
+- Rotas publicas `/`, `/descobrir`, `/buscar`, `/auth`, `/api/v1/health` e
+  `/api/v1/ready` responderam HTTP 200.
+- Navegador confirmou 48 obras por pagina, 8.692 obras publicas, paginacao,
+  links semanticos, datas pt-BR, obra com capitulos e leitor com 23 paginas.
+- Preferencias de largura, espacamento e fundo do leitor foram validadas no
+  navegador, sem erros de console.
+- Backup local e externo estavam com resultado `success`; o remoto correto
+  `trabalho:` continha o snapshot `20260902-022357`.
+- Proximas execucoes confirmadas para 2026-09-03: backup local por volta de
+  02:19 UTC e offsite por volta de 03:05 UTC.
+- Copias de codigo anteriores aos dois deploys foram preservadas em
+  `/opt/mangaflow-hub/backups/code-20260902T081927Z` e
+  `/opt/mangaflow-hub/backups/code-20260902T082508Z`.
+
 ## Objetivo
 
 Levar o MangaFlow Hub a um estado completo como site privado/publicavel de
