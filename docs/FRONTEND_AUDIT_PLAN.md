@@ -111,7 +111,17 @@ Ha tambem um bloqueador de leitura: a obra `Air Gear` lista capitulos, mas o end
   migração de identidade entre o catálogo SQLite e o banco de contas, portanto
   permanece explicitamente pendente.
 - Conteúdo adulto não ganhou bloqueio: conforme decisão do produto, abre só
-  após o aviso “Este conteúdo é para maiores de idade. Deseja continuar?”.
+  após o aviso “Este conteúdo é para maiores de idade. Deseja continuar?”. O
+  aviso é um modal React dentro do site, não uma caixa de diálogo do navegador.
+- A listagem pública e a busca agora exigem pelo menos um capítulo `pt-BR`.
+  Na medição antes do filtro havia 10.300 obras públicas, das quais 8.682 já
+  tinham capítulos em português; as 1.618 restantes deixam de aparecer até
+  estarem legíveis. Isto impede cards sem leitura, sem apagar metadados.
+- A fila existente marcou 2.699 obras sem capítulos `pt-BR` (catálogo público
+  e adulto) para verificação imediata e passa a priorizá-las. Quando a origem
+  não oferecer capítulos em português, a obra permanece oculta; quando
+  oferecer, volta ao catálogo automaticamente. Não foram criados recursos nem
+  cargas pagas na Oracle para essa sincronização.
 
 ### Fase 3 — conta e acabamento de produto
 
