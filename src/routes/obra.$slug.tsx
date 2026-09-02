@@ -148,7 +148,10 @@ function Detail() {
                     )
                   }
                 >
-                  <Play /> {latest.number > 0 ? `Ler capítulo ${latest.number}` : "Ler capítulo disponível"}
+                  <Play />
+                  {latest.number > 0
+                    ? `Ler capítulo ${latest.number}`
+                    : "Ler capítulo disponível"}
                 </button>
               ) : (
                 <span className="secondary-button cursor-not-allowed opacity-60">
@@ -185,10 +188,14 @@ function Detail() {
                     {chapter.read ? <Check /> : <span>{chapter.number}</span>}
                   </span>
                   <div>
-                  <strong>{chapter.number > 0 ? `Capítulo ${chapter.number}` : "Capítulo disponível"}</strong>
-                  <small>
+                    <strong>
+                      {chapter.number > 0
+                        ? `Capítulo ${chapter.number}`
+                        : "Capítulo disponível"}
+                    </strong>
+                    <small>
                       {chapter.title} · {formatReleaseDate(chapter.releasedAt)}
-                  </small>
+                    </small>
                   </div>
                   <span className="ml-auto hidden text-xs text-muted-foreground sm:block">
                     {chapter.language}
