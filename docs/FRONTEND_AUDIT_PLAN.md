@@ -1,7 +1,7 @@
 # Auditoria e plano do frontend — MangaFlow
 
 Data da auditoria: 2026-09-01  
-Estado: **Fase 1 concluída e publicada em 2026-09-01; Fases 2 e 3 pendentes**.
+Estado: **Fases 1 e 2 concluídas e publicadas em 2026-09-02; sincronização de conta permanece pendente**.
 
 ## Escopo e metodo
 
@@ -96,6 +96,22 @@ Ha tambem um bloqueador de leitura: a obra `Air Gear` lista capitulos, mas o end
 5. Unificar "biblioteca" em todos os lugares, ligada ao usuario autenticado e com feedback de sucesso/erro.
 
 **Criterios de aceite:** um capitulo com paginas disponiveis le todas as paginas; um 503 mostra acao de nova tentativa sem tela enganosa; a navegacao entre capitulos nao exibe imagens/titulo antigos.
+
+#### Execução registrada — 2026-09-02
+
+- Busca agora é paginada, informa falhas e consulta títulos alternativos e
+  gêneros. O contrato retorna página, limite e total.
+- O leitor limpa o estado ao trocar de capítulo, oferece nova tentativa,
+  navegação entre capítulos disponíveis e tratamento individual de imagem.
+  Em produção, o capítulo testado de Air Gear retornou 20 páginas; 15 imagens
+  já estavam carregadas durante a validação inicial e nenhuma falha de página
+  foi exibida.
+- Biblioteca e favoritos deixaram de ser botões de demonstração: funcionam e
+  persistem no dispositivo atual. A sincronização entre dispositivos exige uma
+  migração de identidade entre o catálogo SQLite e o banco de contas, portanto
+  permanece explicitamente pendente.
+- Conteúdo adulto não ganhou bloqueio: conforme decisão do produto, abre só
+  após o aviso “Este conteúdo é para maiores de idade. Deseja continuar?”.
 
 ### Fase 3 — conta e acabamento de produto
 
