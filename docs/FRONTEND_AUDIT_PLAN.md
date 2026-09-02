@@ -110,9 +110,9 @@ Ha tambem um bloqueador de leitura: a obra `Air Gear` lista capitulos, mas o end
   persistem no dispositivo atual. A sincronização entre dispositivos exige uma
   migração de identidade entre o catálogo SQLite e o banco de contas, portanto
   permanece explicitamente pendente.
-- Conteúdo adulto não ganhou bloqueio: conforme decisão do produto, abre só
-  após o aviso “Este conteúdo é para maiores de idade. Deseja continuar?”. O
-  aviso é um modal React dentro do site, não uma caixa de diálogo do navegador.
+- Conteúdo adulto é uma preferência local explícita: desligado, não aparece em
+  cards, busca, home ou rota direta; ligado, libera a Lista adulta e não repete
+  aviso. A preferência fica somente no dispositivo atual.
 - A listagem pública e a busca agora exigem pelo menos um capítulo `pt-BR`.
   Na medição antes do filtro havia 10.300 obras públicas, das quais 8.682 já
   tinham capítulos em português; as 1.618 restantes deixam de aparecer até
@@ -122,6 +122,9 @@ Ha tambem um bloqueador de leitura: a obra `Air Gear` lista capitulos, mas o end
   não oferecer capítulos em português, a obra permanece oculta; quando
   oferecer, volta ao catálogo automaticamente. Não foram criados recursos nem
   cargas pagas na Oracle para essa sincronização.
+- A home possui filas leves de Lançamentos e Destaques, obtidas por uma rota
+  única e indexada. Continuar lendo é registrado localmente ao abrir um capítulo
+  e não exige conta nem uma chamada adicional ao servidor.
 
 ### Fase 3 — conta e acabamento de produto
 

@@ -6,6 +6,7 @@ import { CatalogSkeleton, ProductState } from "@/components/product-states";
 import type { CatalogItem } from "@/types/content";
 import { useAgeGate } from "@/components/age-gate";
 import { useLocalLibrary } from "@/lib/local-library";
+import { useAdultContent } from "@/lib/adult-content";
 
 export const Route = createFileRoute("/obra/$slug")({ component: Detail });
 
@@ -19,6 +20,7 @@ function Detail() {
   const [loadMoreError, setLoadMoreError] = useState(false);
   const { guard, modal } = useAgeGate();
   const { add, entries } = useLocalLibrary();
+  const { adultEnabled } = useAdultContent();
 
   useEffect(() => {
     setItem(undefined);
@@ -53,6 +55,19 @@ function Detail() {
     return (
       <main className="page-shell py-12">
         {failed ? <ProductState state="no-results" /> : <CatalogSkeleton />}
+      </main>
+    );
+  if (item.ageRating === "18+" && !adultEnabled)
+    return (
+      <main className="page-shell py-12">
+        <ProductState
+          state="empty"
+          action={
+            <Link to="/configuracoes" className="secondary-button">
+              Abrir configurações
+            </Link>
+          }
+        />
       </main>
     );
   const latest = item.chapters[0];

@@ -9,6 +9,10 @@ export type CatalogPageResponse = {
   limit: number;
   total: number;
 };
+export type HomeQueuesResponse = {
+  releases: CatalogItem[];
+  highlights: CatalogItem[];
+};
 
 async function request<T>(path: string): Promise<T> {
   const response = await fetch(`${apiBase}${path}`, { headers: { accept: "application/json" } });
@@ -34,6 +38,13 @@ export const catalogService = {
   },
   async discover(): Promise<CatalogItem[]> {
     return (await this.catalogPage({ limit: 24 })).results;
+  },
+  async homeQueues(includeAdult = false): Promise<HomeQueuesResponse> {
+    const payload = await request<HomeQueuesResponse>(`/api/v1/home?adult=${includeAdult}`);
+    return {
+      releases: payload.releases.map(normalizeWork),
+      highlights: payload.highlights.map(normalizeWork),
+    };
   },
   async catalogPage({
     page = 1,

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, ChevronLeft, ChevronRight, Maximize, RefreshCw, Settings2 } from "lucide-react";
 import { catalogService } from "@/services/catalog-service";
 import type { Chapter } from "@/types/content";
+import { rememberReading } from "@/lib/reading-history";
 
 export const Route = createFileRoute("/ler/$slug/$chapter")({ component: Reader });
 
@@ -28,15 +29,17 @@ function Reader() {
     try {
       const selected = await catalogService.chapter(chapter);
       if (selected.workSlug !== slug) throw new Error("Capítulo não encontrado");
-      const [result, chapterList] = await Promise.all([
+      const [result, chapterList, work] = await Promise.all([
         catalogService.pages(chapter),
         catalogService.chapters(slug, 1, 100),
+        catalogService.getBySlug(slug),
       ]);
       if (!active) return;
       setTitle(selected.workTitle);
       setChapterNumber(String(selected.number));
       setPages(result.pages);
       setSiblings(chapterList.results);
+      if (work) rememberReading(work, chapter, selected.number);
     } catch (reason) {
       if (active)
         setError(reason instanceof Error ? reason.message : "Não foi possível carregar o capítulo");

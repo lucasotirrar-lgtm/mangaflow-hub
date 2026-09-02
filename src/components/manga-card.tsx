@@ -3,6 +3,7 @@ import { BookmarkPlus, Play, Star } from "lucide-react";
 import type { CatalogItem } from "@/types/content";
 import { useAgeGate } from "@/components/age-gate";
 import { useLocalLibrary } from "@/lib/local-library";
+import { useAdultContent } from "@/lib/adult-content";
 
 const kindLabel = { manga: "Mangá", manhwa: "Manhwa", "light-novel": "Light novel" } as const;
 
@@ -10,7 +11,9 @@ export function MangaCard({ manga }: { manga: CatalogItem }) {
   const navigate = useNavigate();
   const { guard, modal } = useAgeGate();
   const { add, entries } = useLocalLibrary();
+  const { adultEnabled } = useAdultContent();
   const inLibrary = entries.some((entry) => entry.slug === manga.slug);
+  if (manga.ageRating === "18+" && !adultEnabled) return null;
   const open = () =>
     guard(manga.ageRating === "18+", () =>
       navigate({ to: "/obra/$slug", params: { slug: manga.slug } }),

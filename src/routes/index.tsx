@@ -5,6 +5,8 @@ import { MangaCard, SectionTitle } from "@/components/manga-card";
 import { CatalogSkeleton, ProductState } from "@/components/product-states";
 import { catalogService } from "@/services/catalog-service";
 import type { CatalogItem } from "@/types/content";
+import { useAdultContent } from "@/lib/adult-content";
+import { useReadingHistory } from "@/lib/reading-history";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -20,15 +22,39 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
-  const [items, setItems] = useState<CatalogItem[]>([]);
+  const [releases, setReleases] = useState<CatalogItem[]>([]);
+  const [highlights, setHighlights] = useState<CatalogItem[]>([]);
+  const [adultReleases, setAdultReleases] = useState<CatalogItem[]>([]);
   const [failed, setFailed] = useState(false);
+  const { adultEnabled } = useAdultContent();
+  const history = useReadingHistory();
   useEffect(() => {
+    let active = true;
+    setFailed(false);
     catalogService
-      .discover()
-      .then(setItems)
-      .catch(() => setFailed(true));
+      .homeQueues()
+      .then((queues) => {
+        if (!active) return;
+        setReleases(queues.releases);
+        setHighlights(queues.highlights);
+      })
+      .catch(() => active && setFailed(true));
+    return () => {
+      active = false;
+    };
   }, []);
-  if (!items.length)
+  useEffect(() => {
+    if (!adultEnabled) {
+      setAdultReleases([]);
+      return;
+    }
+    let active = true;
+    catalogService.homeQueues(true).then((queues) => active && setAdultReleases(queues.releases));
+    return () => {
+      active = false;
+    };
+  }, [adultEnabled]);
+  if (!releases.length)
     return (
       <main className="page-shell py-12">
         {failed ? (
@@ -45,7 +71,7 @@ function Home() {
         )}
       </main>
     );
-  const feature = items[0]!;
+  const feature = releases[0]!;
   return (
     <main className="page-shell space-y-14 pb-28 lg:pb-12">
       <section className="hero-panel">
@@ -95,7 +121,7 @@ function Home() {
           Novidades em PT-BR
         </SectionTitle>
         <div className="catalog-grid">
-          {items.slice(0, 4).map((item) => (
+          {releases.slice(0, 4).map((item) => (
             <MangaCard key={item.id} manga={item} />
           ))}
         </div>
@@ -120,26 +146,54 @@ function Home() {
       </section>
       <section>
         <SectionTitle action="Descobrir mais" to="/descobrir">
-          Catálogo atualizado
+          Destaques
         </SectionTitle>
         <div className="catalog-grid">
-          {items.slice(4, 12).map((item) => (
+          {highlights.slice(0, 8).map((item) => (
             <MangaCard key={item.id} manga={item} />
           ))}
         </div>
       </section>
-      <section className="adult-zone">
-        <div>
-          <span className="age-badge adult">18+</span>
-          <h2 className="mt-3 font-display text-2xl font-extrabold">Espaço adulto separado</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Conteúdo maduro permanece identificado e protegido.
-          </p>
-        </div>
-        <Link to="/descobrir" search={{ age: "18+" }} className="secondary-button">
-          Explorar com filtros
-        </Link>
-      </section>
+      {history.length > 0 && (
+        <section>
+          <SectionTitle action="Ver histórico" to="/historico">
+            Continuar lendo
+          </SectionTitle>
+          <div className="catalog-grid">
+            {history.slice(0, 8).map((item) => (
+              <MangaCard
+                key={item.slug}
+                manga={{
+                  ...item,
+                  progress: Math.min(
+                    100,
+                    Math.round((item.lastChapterNumber / Math.max(item.latestChapter, 1)) * 100),
+                  ),
+                }}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+      {adultEnabled && adultReleases.length > 0 && (
+        <section className="adult-zone">
+          <div>
+            <span className="age-badge adult">18+</span>
+            <h2 className="mt-3 font-display text-2xl font-extrabold">Lista adulta</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Lançamentos adultos disponíveis neste dispositivo.
+            </p>
+          </div>
+          <Link to="/adultos" className="secondary-button">
+            Ver lista adulta
+          </Link>
+          <div className="catalog-grid md:col-span-2">
+            {adultReleases.slice(0, 4).map((item) => (
+              <MangaCard key={item.id} manga={item} />
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   );
 }

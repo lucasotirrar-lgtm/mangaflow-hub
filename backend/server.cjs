@@ -935,6 +935,43 @@ app.get("/api/v1/catalog", async (req, res, next) => {
     next(error);
   }
 });
+app.get("/api/v1/home", async (req, res, next) => {
+  try {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 12, 1), 24);
+    const adult = req.query.adult === "true" ? 1 : 0;
+    // Read a bounded, index-ordered recent window first. Aggregating every chapter
+    // on the home request is too expensive for the Always Free SQLite instance.
+    const recentChapters = await all(
+      `SELECT work_id FROM chapters WHERE language = 'pt-BR'
+       ORDER BY updated_at DESC LIMIT 500`,
+    );
+    const orderedIds = [...new Set(recentChapters.map((chapter) => chapter.work_id))];
+    const releases = orderedIds.length
+      ? await all(
+          `SELECT w.* FROM works w WHERE w.is_adult = ?
+           AND w.id IN (${orderedIds.map(() => "?").join(",")})`,
+          [adult, ...orderedIds],
+        )
+      : [];
+    const releaseRank = new Map(orderedIds.map((id, index) => [id, index]));
+    releases.sort((left, right) => releaseRank.get(left.id) - releaseRank.get(right.id));
+    releases.splice(limit);
+    const highlights = await all(
+      `SELECT w.* FROM works w
+       WHERE w.is_adult = ?
+         AND EXISTS (SELECT 1 FROM chapters c WHERE c.work_id = w.id AND c.language = 'pt-BR')
+       ORDER BY w.updated_at DESC, w.id ASC LIMIT ?`,
+      [adult, limit],
+    );
+    await Promise.all([attachChapterSummaries(releases), attachChapterSummaries(highlights)]);
+    res.json({
+      releases: releases.map(serializeWork),
+      highlights: highlights.map(serializeWork),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 app.get("/api/v1/search", async (req, res, next) => {
   try {
     const query = String(req.query.q || "").trim();

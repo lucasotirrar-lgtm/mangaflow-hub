@@ -3,6 +3,7 @@ import { Bell, BookMarked, Heart, ListPlus, Settings, User } from "lucide-react"
 import { MangaCard } from "@/components/manga-card";
 import { ProductState } from "@/components/product-states";
 import { useLocalLibrary, type LocalLibraryEntry } from "@/lib/local-library";
+import { useAdultContent } from "@/lib/adult-content";
 import type { CatalogItem } from "@/types/content";
 
 const meta = {
@@ -42,6 +43,7 @@ function toCard(entry: LocalLibraryEntry): CatalogItem {
 export function AccountPage({ section }: { section: AccountSection }) {
   const [Icon, title, description] = meta[section];
   const { entries, remove, toggleFavorite } = useLocalLibrary();
+  const { adultEnabled, setAdultEnabled } = useAdultContent();
   const visible = section === "favoritos" ? entries.filter((entry) => entry.favorite) : entries;
   const isCollection = section === "biblioteca" || section === "favoritos";
   return (
@@ -97,8 +99,18 @@ export function AccountPage({ section }: { section: AccountSection }) {
           <section className="side-card">
             <h2>Conteúdo adulto</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Ao abrir uma obra adulta, o site mostra um aviso e pede confirmação.
+              Ao ativar, a lista adulta fica disponível e não mostra aviso novamente neste
+              dispositivo. Ao desligar, obras adultas deixam de aparecer no site.
             </p>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={adultEnabled}
+              className="secondary-button mt-4"
+              onClick={() => setAdultEnabled(!adultEnabled)}
+            >
+              {adultEnabled ? "Conteúdo adulto ligado" : "Conteúdo adulto desligado"}
+            </button>
           </section>
         </div>
       ) : section === "perfil" ? (

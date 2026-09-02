@@ -177,6 +177,10 @@ async function initialize() {
   );
   await run("CREATE INDEX IF NOT EXISTS works_provider_updated_idx ON works(provider_updated_at)");
   await run("CREATE INDEX IF NOT EXISTS chapters_work_idx ON chapters(work_id, chapter_number)");
+  await run("CREATE INDEX IF NOT EXISTS chapters_work_language_idx ON chapters(work_id, language)");
+  await run(
+    "CREATE INDEX IF NOT EXISTS chapters_queue_idx ON chapters(language, updated_at DESC, work_id)",
+  );
   await run("CREATE INDEX IF NOT EXISTS chapter_schedule_idx ON work_sync_state(next_check_at)");
   await run("CREATE INDEX IF NOT EXISTS sync_runs_started_idx ON sync_runs(started_at)");
 }

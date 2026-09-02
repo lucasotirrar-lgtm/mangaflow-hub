@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AdultosRouteImport } from './routes/adultos'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AvaliacoesRouteImport } from './routes/avaliacoes'
 import { Route as BibliotecaRouteImport } from './routes/biblioteca'
@@ -36,6 +37,11 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdultosRoute = AdultosRouteImport.update({
+  id: '/adultos',
+  path: '/adultos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -126,6 +132,7 @@ const LerSlugChapterRoute = LerSlugChapterRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/adultos': typeof AdultosRoute
   '/auth': typeof AuthRoute
   '/avaliacoes': typeof AvaliacoesRoute
   '/biblioteca': typeof BibliotecaRoute
@@ -146,6 +153,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/adultos': typeof AdultosRoute
   '/auth': typeof AuthRoute
   '/avaliacoes': typeof AvaliacoesRoute
   '/biblioteca': typeof BibliotecaRoute
@@ -168,6 +176,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/adultos': typeof AdultosRoute
   '/auth': typeof AuthRoute
   '/avaliacoes': typeof AvaliacoesRoute
   '/biblioteca': typeof BibliotecaRoute
@@ -190,6 +199,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/adultos'
     | '/auth'
     | '/avaliacoes'
     | '/biblioteca'
@@ -210,6 +220,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/adultos'
     | '/auth'
     | '/avaliacoes'
     | '/biblioteca'
@@ -231,6 +242,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/adultos'
     | '/auth'
     | '/avaliacoes'
     | '/biblioteca'
@@ -253,6 +265,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AdultosRoute: typeof AdultosRoute
   AuthRoute: typeof AuthRoute
   AvaliacoesRoute: typeof AvaliacoesRoute
   BibliotecaRoute: typeof BibliotecaRoute
@@ -285,6 +298,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/adultos': {
+      id: '/adultos'
+      path: '/adultos'
+      fullPath: '/adultos'
+      preLoaderRoute: typeof AdultosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -423,6 +443,7 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AdultosRoute: AdultosRoute,
   AuthRoute: AuthRoute,
   AvaliacoesRoute: AvaliacoesRoute,
   BibliotecaRoute: BibliotecaRoute,

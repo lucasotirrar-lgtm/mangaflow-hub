@@ -18,14 +18,16 @@ export function CatalogPage({
   description = "Encontre sua próxima leitura em português do Brasil.",
   search,
   onSearchChange,
+  adultOnly = false,
 }: {
   title?: string;
   description?: string;
   search: CatalogSearch;
   onSearchChange: (search: CatalogSearch) => void;
+  adultOnly?: boolean;
 }) {
   const kind = search.kind ?? "todos";
-  const age = search.age ?? "todos";
+  const age = adultOnly ? "18+" : (search.age ?? "todos");
   const status = search.status ?? "todos";
   const pageSize = search.limit ?? 48;
   const [items, setItems] = useState<CatalogItem[]>([]);
@@ -111,18 +113,20 @@ export function CatalogPage({
             ["light-novel", "Light novel"],
           ]}
         />
-        <Filter
-          label="Faixa etária"
-          value={age}
-          set={(value) => {
-            setFilter("age", value);
-          }}
-          options={[
-            ["todos", "Todas"],
-            ["14", "14"],
-            ["18+", "18+"],
-          ]}
-        />
+        {!adultOnly && (
+          <Filter
+            label="Faixa etária"
+            value={age}
+            set={(value) => {
+              setFilter("age", value);
+            }}
+            options={[
+              ["todos", "Todas"],
+              ["14", "14"],
+              ["18+", "18+"],
+            ]}
+          />
+        )}
         <Filter
           label="Status"
           value={status}

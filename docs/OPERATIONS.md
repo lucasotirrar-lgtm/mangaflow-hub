@@ -61,6 +61,11 @@ O provedor público informa cerca de 11.949 obras e a janela atual chega a
 aproximadamente 10 mil posições; ainda é pendência particionar por data/gênero
 ou outra estratégia para garantir o restante. O provedor adulto informa 1.934.
 
+`GET /api/v1/home` abastece as filas públicas de lançamentos e destaques. Ele
+consulta uma janela limitada de capítulos recentes e índices SQLite, em vez de
+agregar todo o histórico a cada acesso. `adult=true` só deve ser solicitado pela
+interface quando a preferência local de conteúdo adulto estiver ligada.
+
 ## Agendamento
 
 Worker: incremental público a cada 15 min, adulto a cada 60 min e uma fila
@@ -108,6 +113,11 @@ O Hermes Oracle Sentinel entrega alertas diretamente pelo Telegram, sem LLM:
   backup local com mais de 30 horas geram alerta;
 - backup externo ausente, com mais de 36 horas ou serviço em falha gera alerta;
 - sucesso do backup externo gera uma confirmação curta após checksum remoto.
+
+Na verificação de 2026-09-02, o backup local `20260901-022219` continha o banco
+MangaFlow e o pacote de arquivos; o envio ao remoto
+`trabalho:VEXCLAUD/backups/system/20260901-022219` verificou 11 arquivos sem
+diferenças.
 
 O remoto ainda usa temporariamente o identificador OAuth compartilhado do
 `rclone`. Ele funciona hoje, mas será aposentado durante 2026. Criar um cliente

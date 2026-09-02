@@ -6,6 +6,7 @@ import {
   Heart,
   Home,
   Library,
+  LockKeyhole,
   Menu,
   Moon,
   Search,
@@ -15,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useAdultContent } from "@/lib/adult-content";
 
 const nav = [
   { to: "/", label: "Início", icon: Home },
@@ -27,6 +29,7 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const [dark, setDark] = useState(true);
   const [query, setQuery] = useState("");
+  const { adultEnabled } = useAdultContent();
   const navigate = useNavigate();
   useEffect(() => {
     const stored = localStorage.getItem("yae-theme");
@@ -114,6 +117,9 @@ export function SiteHeader() {
             <div className="grid grid-cols-2 gap-1">
               {[
                 ...nav,
+                ...(adultEnabled
+                  ? [{ to: "/adultos", label: "Lista adulta", icon: LockKeyhole }]
+                  : []),
                 { to: "/historico", label: "Histórico", icon: BookMarked },
                 { to: "/configuracoes", label: "Configurações", icon: Settings },
               ].map(({ to, label, icon: Icon }) => (
