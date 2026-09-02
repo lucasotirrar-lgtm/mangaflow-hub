@@ -942,7 +942,8 @@ app.get("/api/v1/search", async (req, res, next) => {
     const match = ftsQuery(query);
     if (!match) return res.json({ results: [], page, limit, total: 0 });
     const genreMatch = `%${query.toLowerCase()}%`;
-    const where = "(works_fts MATCH ? OR LOWER(w.genres_json) LIKE ?) AND w.is_adult = ?";
+    const where =
+      "(w.id IN (SELECT work_id FROM works_fts WHERE works_fts MATCH ?) OR LOWER(w.genres_json) LIKE ?) AND w.is_adult = ?";
     const values = [match, genreMatch, adult];
     const count = await get(
       `SELECT count(*) AS total FROM works_fts f JOIN works w ON w.id = f.work_id WHERE ${where}`,
