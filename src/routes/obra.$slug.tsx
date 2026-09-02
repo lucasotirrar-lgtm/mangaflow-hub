@@ -60,14 +60,15 @@ function Detail() {
   if (item.ageRating === "18+" && !adultEnabled)
     return (
       <main className="page-shell py-12">
-        <ProductState
-          state="empty"
-          action={
-            <Link to="/configuracoes" className="secondary-button">
-              Abrir configurações
-            </Link>
-          }
-        />
+        <section className="side-card mx-auto max-w-xl text-center">
+          <h1 className="font-display text-2xl font-extrabold">Conteúdo adulto desativado</h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Esta obra não é exibida enquanto o conteúdo adulto estiver desligado.
+          </p>
+          <Link to="/configuracoes" className="secondary-button mt-5">
+            Abrir configurações
+          </Link>
+        </section>
       </main>
     );
   const latest = item.chapters[0];

@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback } from "react";
 import { CatalogPage, type CatalogSearch } from "@/components/catalog-page";
-import { ProductState } from "@/components/product-states";
 import { useAdultContent } from "@/lib/adult-content";
 
 export const Route = createFileRoute("/adultos")({
@@ -20,14 +19,15 @@ function AdultList() {
   if (!adult.adultEnabled)
     return (
       <main className="page-shell py-12">
-        <ProductState
-          state="empty"
-          action={
-            <Link to="/configuracoes" className="secondary-button">
-              Abrir configurações
-            </Link>
-          }
-        />
+        <section className="side-card mx-auto max-w-xl text-center">
+          <h1 className="font-display text-2xl font-extrabold">Lista adulta desativada</h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Ative o conteúdo adulto nas configurações para exibir esta lista neste dispositivo.
+          </p>
+          <Link to="/configuracoes" className="secondary-button mt-5">
+            Abrir configurações
+          </Link>
+        </section>
       </main>
     );
   return (
