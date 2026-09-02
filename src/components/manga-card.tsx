@@ -20,8 +20,14 @@ export function MangaCard({ manga }: { manga: CatalogItem }) {
     );
   return (
     <article className="group min-w-0">
-      <button
-        onClick={open}
+      <Link
+        to="/obra/$slug"
+        params={{ slug: manga.slug }}
+        onClick={(event) => {
+          if (manga.ageRating !== "18+") return;
+          event.preventDefault();
+          open();
+        }}
         className="relative block w-full overflow-hidden rounded-2xl border border-border bg-surface text-left shadow-sm transition hover:-translate-y-1 hover:border-primary/60 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <img
@@ -49,9 +55,18 @@ export function MangaCard({ manga }: { manga: CatalogItem }) {
           )}
           <Play className="h-8 w-8 rounded-full bg-primary p-2 text-primary-foreground opacity-0 transition group-hover:opacity-100" />
         </div>
-      </button>
+      </Link>
       <div className="mt-3 flex items-start gap-2">
-        <button onClick={open} className="min-w-0 flex-1 text-left">
+        <Link
+          to="/obra/$slug"
+          params={{ slug: manga.slug }}
+          onClick={(event) => {
+            if (manga.ageRating !== "18+") return;
+            event.preventDefault();
+            open();
+          }}
+          className="min-w-0 flex-1 text-left"
+        >
           <h3 className="line-clamp-2 font-display text-sm font-bold group-hover:text-primary">
             {manga.title}
           </h3>
@@ -59,7 +74,7 @@ export function MangaCard({ manga }: { manga: CatalogItem }) {
             {manga.latestChapter > 0 ? `Cap. ${manga.latestChapter} · ` : "Capítulo disponível · "}
             {manga.sources[0]?.label}
           </p>
-        </button>
+        </Link>
         <button
           aria-label={
             inLibrary

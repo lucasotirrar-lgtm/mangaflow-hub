@@ -591,6 +591,9 @@ select {
   min-height: 100vh;
   background: #09080e;
 }
+.reader.reader-black {
+  background: #000;
+}
 .reader-bar {
   position: sticky;
   top: 0;
@@ -627,6 +630,34 @@ select {
   gap: 1px;
   max-width: 900px;
   margin: auto;
+}
+.reader-settings {
+  position: sticky;
+  top: 3.8rem;
+  z-index: 9;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.8rem;
+  border-bottom: 1px solid #ffffff18;
+  background: #121019f2;
+  padding: 0.8rem 1rem;
+  backdrop-filter: blur(10px);
+}
+.reader-settings label {
+  display: grid;
+  gap: 0.3rem;
+  color: #aaa;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.reader-settings select {
+  min-width: 8rem;
+  border: 1px solid #ffffff24;
+  border-radius: 0.6rem;
+  background: #1b1723;
+  padding: 0.45rem 0.65rem;
+  color: #fff;
 }
 .reader-placeholder {
   display: flex;

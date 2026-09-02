@@ -7,6 +7,18 @@ import { rememberReading } from "@/lib/reading-history";
 
 export const Route = createFileRoute("/ler/$slug/$chapter")({ component: Reader });
 
+type ReaderPreferences = {
+  width: "700px" | "900px" | "1200px" | "100%";
+  gap: 0 | 8 | 16;
+  background: "soft" | "black";
+};
+
+const defaultPreferences: ReaderPreferences = {
+  width: "900px",
+  gap: 0,
+  background: "soft",
+};
+
 function Reader() {
   const { slug, chapter } = Route.useParams();
   const navigate = useNavigate();
@@ -17,6 +29,25 @@ function Reader() {
   const [loading, setLoading] = useState(true);
   const [siblings, setSiblings] = useState<Chapter[]>([]);
   const [failedImages, setFailedImages] = useState<number[]>([]);
+  const [preferencesOpen, setPreferencesOpen] = useState(false);
+  const [preferences, setPreferences] = useState<ReaderPreferences>(defaultPreferences);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("mangaflow-reader-preferences");
+      if (saved) setPreferences({ ...defaultPreferences, ...JSON.parse(saved) });
+    } catch {
+      window.localStorage.removeItem("mangaflow-reader-preferences");
+    }
+  }, []);
+
+  const updatePreferences = (next: Partial<ReaderPreferences>) => {
+    setPreferences((current) => {
+      const value = { ...current, ...next };
+      window.localStorage.setItem("mangaflow-reader-preferences", JSON.stringify(value));
+      return value;
+    });
+  };
 
   const load = useCallback(async () => {
     let active = true;
@@ -36,7 +67,7 @@ function Reader() {
       ]);
       if (!active) return;
       setTitle(selected.workTitle);
-      setChapterNumber(String(selected.number));
+      setChapterNumber(selected.number > 0 ? String(selected.number) : "Disponível");
       setPages(result.pages);
       setSiblings(chapterList.results);
       if (work) rememberReading(work, chapter, selected.number);
@@ -63,7 +94,7 @@ function Reader() {
   };
 
   return (
-    <main className="reader">
+    <main className={`reader ${preferences.background === "black" ? "reader-black" : ""}`}>
       <div className="reader-bar">
         <Link to="/obra/$slug" params={{ slug }} aria-label="Voltar à obra">
           <ArrowLeft />
@@ -84,13 +115,62 @@ function Reader() {
           </button>
           <button
             aria-label="Preferências de leitura"
-            title="Preferências serão salvas quando a conta sincronizada estiver disponível"
+            aria-expanded={preferencesOpen}
+            onClick={() => setPreferencesOpen((open) => !open)}
           >
             <Settings2 />
           </button>
         </div>
       </div>
-      <div className="reader-content">
+      {preferencesOpen && (
+        <section className="reader-settings" aria-label="Preferências de leitura">
+          <label>
+            Largura
+            <select
+              value={preferences.width}
+              onChange={(event) =>
+                updatePreferences({ width: event.target.value as ReaderPreferences["width"] })
+              }
+            >
+              <option value="700px">Compacta</option>
+              <option value="900px">Padrão</option>
+              <option value="1200px">Larga</option>
+              <option value="100%">Tela inteira</option>
+            </select>
+          </label>
+          <label>
+            Espaçamento
+            <select
+              value={preferences.gap}
+              onChange={(event) =>
+                updatePreferences({ gap: Number(event.target.value) as ReaderPreferences["gap"] })
+              }
+            >
+              <option value={0}>Sem espaço</option>
+              <option value={8}>Pequeno</option>
+              <option value={16}>Confortável</option>
+            </select>
+          </label>
+          <label>
+            Fundo
+            <select
+              value={preferences.background}
+              onChange={(event) =>
+                updatePreferences({
+                  background: event.target.value as ReaderPreferences["background"],
+                })
+              }
+            >
+              <option value="soft">Suave</option>
+              <option value="black">Preto</option>
+            </select>
+          </label>
+        </section>
+      )}
+      <div
+        className="reader-content"
+        style={{ maxWidth: preferences.width, gap: `${preferences.gap}px` }}
+      >
         {error ? (
           <div className="reader-placeholder">
             <h1>Capítulo indisponível</h1>

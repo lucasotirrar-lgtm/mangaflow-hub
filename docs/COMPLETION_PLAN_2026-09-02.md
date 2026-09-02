@@ -5,13 +5,15 @@ Escopo deste arquivo: plano, auditoria e registro das entregas executadas.
 
 ## Execucao iniciada em 2026-09-02
 
-- Cadastro publico removido da rota `/auth`; a tela agora aceita somente login
-  administrativo por e-mail/senha ou Google.
+- Cadastro publico e Google OAuth removidos da rota `/auth`; a tela agora aceita
+  somente login administrativo por e-mail/senha previamente provisionado.
 - Removida a acao `claimFirstAdmin`; nenhum usuario pode se promover pelo site.
   A funcao admin precisa ser atribuida por convite/role no Supabase.
 - Capitulos sem numero agora aparecem como "Capitulo disponivel" no card, no
   destaque da obra e na lista de capitulos, preservando o acesso ao leitor.
 - Datas de lancamento da obra foram normalizadas para formato local pt-BR.
+- Cards do catalogo foram transformados em links semanticos reais.
+- O leitor recebeu preferencias locais de largura, espacamento e fundo.
 - Validacoes executadas: `npm run lint`, `npm run typecheck` e `npm run build`.
 
 As fases restantes abaixo continuam planejadas e nao foram consideradas
