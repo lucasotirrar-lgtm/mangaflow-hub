@@ -3,6 +3,20 @@ import { useCallback } from "react";
 import { CatalogPage, type CatalogSearch } from "@/components/catalog-page";
 export const Route = createFileRoute("/mangas")({
   validateSearch: validateCatalogSearch,
+  head: () => ({
+    meta: [
+      { title: "Catálogo Completo de Mangás — Yae Manga House" },
+      {
+        name: "description",
+        content: "Todas as obras disponíveis com capítulos traduzidos em português do Brasil.",
+      },
+      { property: "og:title", content: "Catálogo de Mangás — Yae Manga House" },
+      {
+        property: "og:description",
+        content: "Navegue pelo catálogo completo de mangás, manhwas e light novels.",
+      },
+    ],
+  }),
   component: MangasPage,
 });
 

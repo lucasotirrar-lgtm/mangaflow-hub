@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAdultContent } from "@/lib/adult-content";
+import { safeStorage } from "@/lib/safe-storage";
 
 const nav = [
   { to: "/", label: "Início", icon: Home },
@@ -32,7 +33,7 @@ export function SiteHeader() {
   const { adultEnabled } = useAdultContent();
   const navigate = useNavigate();
   useEffect(() => {
-    const stored = localStorage.getItem("yae-theme");
+    const stored = safeStorage.getItem("yae-theme");
     const value = stored ? stored === "dark" : true;
     setDark(value);
     document.documentElement.classList.toggle("dark", value);
@@ -41,7 +42,7 @@ export function SiteHeader() {
     const value = !dark;
     setDark(value);
     document.documentElement.classList.toggle("dark", value);
-    localStorage.setItem("yae-theme", value ? "dark" : "light");
+    safeStorage.setItem("yae-theme", value ? "dark" : "light");
   };
   const submit = (e: React.FormEvent) => {
     e.preventDefault();

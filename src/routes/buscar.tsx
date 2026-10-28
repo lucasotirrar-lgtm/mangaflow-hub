@@ -13,6 +13,15 @@ export const Route = createFileRoute("/buscar")({
     q: typeof s["q"] === "string" ? s["q"] : "",
     page: Math.max(Number(s["page"]) || 1, 1),
   }),
+  head: () => ({
+    meta: [
+      { title: "Buscar Obras — Yae Manga House" },
+      {
+        name: "description",
+        content: "Pesquise por títulos, gêneros, autores e sinopses em nosso catálogo de mangás.",
+      },
+    ],
+  }),
   component: SearchPage,
 });
 
@@ -36,6 +45,7 @@ function SearchPage() {
     let active = true;
     setLoading(true);
     setFailed(false);
+    document.title = `"${value}" — Busca | Yae Manga House`;
     catalogService
       .search(value, page)
       .then((response) => {
@@ -47,6 +57,7 @@ function SearchPage() {
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
+      document.title = "Yae Manga House";
     };
   }, [page, q]);
   const submit = (event: React.FormEvent) => {
@@ -92,7 +103,13 @@ function SearchPage() {
             }
           />
         ) : !q ? (
-          <ProductState state="empty" />
+          <div className="state-panel" role="status">
+            <Search className="h-7 w-7 text-primary" />
+            <h2>O que você deseja ler hoje?</h2>
+            <p>
+              Digite o título de uma obra, gênero, autor ou palavra-chave para buscar em todo o catálogo.
+            </p>
+          </div>
         ) : results.length ? (
           <>
             <p className="mb-5 text-sm text-muted-foreground">

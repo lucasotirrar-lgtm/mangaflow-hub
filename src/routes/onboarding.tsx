@@ -1,6 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { BookOpen, Check, Database, ShieldCheck } from "lucide-react";
-export const Route = createFileRoute("/onboarding")({ component: Onboarding });
+export const Route = createFileRoute("/onboarding")({
+  head: () => ({
+    meta: [
+      { title: "Boas-vindas — Yae Manga House" },
+      {
+        name: "description",
+        content: "Configure sua experiência de leitura na Yae Manga House.",
+      },
+    ],
+  }),
+  component: Onboarding,
+});
 function Onboarding() {
   return (
     <main className="page-shell flex min-h-[75vh] items-center justify-center pb-28">

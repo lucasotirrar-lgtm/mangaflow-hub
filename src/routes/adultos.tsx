@@ -5,6 +5,16 @@ import { useAdultContent } from "@/lib/adult-content";
 
 export const Route = createFileRoute("/adultos")({
   validateSearch: validateCatalogSearch,
+  head: () => ({
+    meta: [
+      { title: "Conteúdo Adulto (+18) — Yae Manga House" },
+      {
+        name: "description",
+        content: "Catálogo de mangás e manhwas para maiores de 18 anos.",
+      },
+      { name: "robots", content: "noindex, follow" },
+    ],
+  }),
   component: AdultList,
 });
 

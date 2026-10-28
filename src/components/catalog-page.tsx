@@ -31,6 +31,7 @@ export function CatalogPage({
   const status = search.status ?? "todos";
   const pageSize = search.limit ?? 48;
   const [items, setItems] = useState<CatalogItem[]>([]);
+  const [sortBy, setSortBy] = useState<"padrao" | "nota" | "nome">("padrao");
   const page = search.page ?? 1;
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -66,11 +67,23 @@ export function CatalogPage({
     };
   }, [age, kind, onSearchChange, page, pageSize, search.age, search.kind, search.status, status]);
 
+  const sortedItems = useMemo(() => {
+    if (sortBy === "nota") {
+      return [...items].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+    }
+    if (sortBy === "nome") {
+      return [...items].sort((a, b) => a.title.localeCompare(b.title));
+    }
+    return items;
+  }, [items, sortBy]);
+
   const reset = () => {
+    setSortBy("padrao");
     onSearchChange({ limit: pageSize });
   };
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const hasFilters = kind !== "todos" || age !== "todos" || status !== "todos";
+  const hasFilters =
+    kind !== "todos" || age !== "todos" || status !== "todos" || sortBy !== "padrao";
   const goToPage = (nextPage: number) => {
     onSearchChange({ ...search, page: Math.min(Math.max(nextPage, 1), totalPages) });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -150,6 +163,16 @@ export function CatalogPage({
             ["60", "60 títulos"],
           ]}
         />
+        <Filter
+          label="Ordenar"
+          value={sortBy}
+          set={(value) => setSortBy(value as "padrao" | "nota" | "nome")}
+          options={[
+            ["padrao", "Padrão"],
+            ["nota", "Melhor avaliados"],
+            ["nome", "Nome (A–Z)"],
+          ]}
+        />
         {hasFilters && (
           <button onClick={reset} className="clear-filter">
             <X />
@@ -170,11 +193,11 @@ export function CatalogPage({
             </button>
           }
         />
-      ) : items.length ? (
+      ) : sortedItems.length ? (
         <>
           <div className="catalog-grid mt-8">
-            {items.map((item) => (
-              <MangaCard key={item.id} manga={item} />
+            {sortedItems.map((item) => (
+              <MangaCard key={item.slug} manga={item} />
             ))}
           </div>
           <CatalogPagination page={page} totalPages={totalPages} goToPage={goToPage} />

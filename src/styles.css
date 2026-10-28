@@ -156,12 +156,15 @@
   --card-foreground: var(--foreground);
   --popover: var(--surface);
   --popover-foreground: var(--foreground);
+  --primary: oklch(0.55 0.22 350);
+  --primary-foreground: oklch(0.99 0.01 320);
   --secondary: oklch(0.91 0.025 310);
   --secondary-foreground: var(--foreground);
   --muted: oklch(0.92 0.02 310);
   --muted-foreground: oklch(0.48 0.03 295);
   --border: oklch(0.86 0.025 310);
   --input: oklch(0.88 0.025 310);
+  --ring: oklch(0.55 0.22 350);
 }
 body {
   min-width: 320px;
@@ -251,6 +254,8 @@ select {
   padding: 0.45rem;
   box-shadow: 0 14px 40px #0005;
   backdrop-filter: blur(18px);
+  will-change: transform;
+  transform: translateZ(0);
 }
 .bottom-link {
   display: flex;
@@ -345,6 +350,10 @@ select {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.2rem 0.8rem;
+}
+.catalog-grid article {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 320px;
 }
 .quick-card {
   display: flex;
@@ -492,54 +501,93 @@ select {
 }
 .section-heading {
   display: flex;
-  align-items: end;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 1rem;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
 }
 .section-heading h2 {
-  font-size: 1.7rem;
+  font-size: 1.5rem;
   font-weight: 800;
+  color: var(--foreground);
 }
 .section-heading span {
-  font-size: 0.65rem;
+  font-size: 0.78rem;
   color: var(--muted-foreground);
 }
 .chapter-list {
   overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: 1rem;
+  border-radius: 1.25rem;
+  background: var(--surface);
+  box-shadow: 0 4px 20px -8px #0004;
 }
 .chapter-row {
   display: flex;
   align-items: center;
-  gap: 0.8rem;
-  border-bottom: 1px solid var(--border);
-  padding: 0.85rem 1rem;
+  gap: 1rem;
+  min-height: 4.25rem;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 60%, transparent);
+  padding: 0.85rem 1.25rem;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 68px;
 }
 .chapter-row:last-child {
-  border: 0;
+  border-bottom: 0;
 }
 .chapter-row:hover {
-  background: var(--surface);
+  background: color-mix(in oklab, var(--primary) 8%, var(--surface));
 }
-.chapter-row svg {
-  width: 1rem;
+.chapter-row:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
 }
-.chapter-row div {
+.chapter-row-info {
   display: flex;
+  flex: 1;
+  min-width: 0;
   flex-direction: column;
+  gap: 0.25rem;
 }
-.chapter-row small {
+.chapter-row-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+.chapter-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
   color: var(--muted-foreground);
 }
 .chapter-number {
-  display: grid;
-  width: 2rem;
-  height: 2rem;
-  place-items: center;
-  border-radius: 0.65rem;
-  background: var(--muted);
-  font-size: 0.72rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  border-radius: 0.85rem;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--muted) 60%, transparent);
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--foreground);
+}
+.chapter-number.read {
+  border-color: color-mix(in oklab, var(--primary) 40%, transparent);
+  background: color-mix(in oklab, var(--primary) 18%, transparent);
+  color: var(--primary);
 }
 .side-card {
   border: 1px solid var(--border);
@@ -597,33 +645,64 @@ select {
 .reader-bar {
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 20;
   display: flex;
   align-items: center;
-  gap: 0.8rem;
-  border-bottom: 1px solid #ffffff18;
-  background: #09080eee;
-  padding: 0.7rem 1rem;
-  backdrop-filter: blur(10px);
+  gap: 0.85rem;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in oklab, var(--background) 95%, transparent);
+  padding: 0.75rem 1.25rem;
+  backdrop-filter: blur(16px);
+  will-change: transform;
+  transform: translateZ(0);
 }
 .reader-bar a,
 .reader-bar button {
   display: grid;
-  width: 2.4rem;
-  height: 2.4rem;
+  width: 2.5rem;
+  height: 2.5rem;
   place-items: center;
   border-radius: 999px;
+  color: var(--foreground);
+  transition: background 0.15s, color 0.15s;
+}
+.reader-bar a:hover,
+.reader-bar button:hover {
+  background: var(--surface);
+  color: var(--primary);
 }
 .reader-bar svg {
-  width: 1.1rem;
+  width: 1.15rem;
+  height: 1.15rem;
 }
 .reader-bar div {
   display: flex;
   flex-direction: column;
+  gap: 0.15rem;
+}
+.reader-bar strong {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--foreground);
 }
 .reader-bar span {
-  font-size: 0.65rem;
-  color: #aaa;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+.reader-bar select {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  padding: 0.45rem 0.85rem;
+  color: var(--foreground);
+  font-size: 0.82rem;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.reader-bar select:focus {
+  border-color: var(--primary);
 }
 .reader-content {
   display: grid;
@@ -633,31 +712,40 @@ select {
 }
 .reader-settings {
   position: sticky;
-  top: 3.8rem;
-  z-index: 9;
+  top: 4.1rem;
+  z-index: 19;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.8rem;
-  border-bottom: 1px solid #ffffff18;
-  background: #121019f2;
-  padding: 0.8rem 1rem;
-  backdrop-filter: blur(10px);
+  gap: 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in oklab, var(--background) 95%, transparent);
+  padding: 1rem 1.5rem;
+  backdrop-filter: blur(16px);
 }
 .reader-settings label {
-  display: grid;
-  gap: 0.3rem;
-  color: #aaa;
-  font-size: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  color: var(--muted-foreground);
+  font-size: 0.76rem;
   font-weight: 700;
+  letter-spacing: 0.03em;
 }
 .reader-settings select {
-  min-width: 8rem;
-  border: 1px solid #ffffff24;
-  border-radius: 0.6rem;
-  background: #1b1723;
-  padding: 0.45rem 0.65rem;
-  color: #fff;
+  min-width: 10rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  padding: 0.55rem 0.85rem;
+  color: var(--foreground);
+  font-size: 0.85rem;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.reader-settings select:focus {
+  border-color: var(--primary);
 }
 .reader-placeholder {
   display: flex;

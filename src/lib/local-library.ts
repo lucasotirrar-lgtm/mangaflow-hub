@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { CatalogItem } from "@/types/content";
+import { safeStorage } from "@/lib/safe-storage";
 
 const key = "mangaflow-library-v1";
 const changed = "mangaflow-library-changed";
@@ -14,7 +15,8 @@ export type LocalLibraryEntry = Pick<
 
 function read(): LocalLibraryEntry[] {
   try {
-    const value = JSON.parse(localStorage.getItem(key) || "[]") as LocalLibraryEntry[];
+    const raw = safeStorage.getItem(key);
+    const value = raw ? (JSON.parse(raw) as LocalLibraryEntry[]) : [];
     return Array.isArray(value) ? value : [];
   } catch {
     return [];
@@ -22,8 +24,14 @@ function read(): LocalLibraryEntry[] {
 }
 
 function write(entries: LocalLibraryEntry[]) {
-  localStorage.setItem(key, JSON.stringify(entries));
-  window.dispatchEvent(new Event(changed));
+  try {
+    safeStorage.setItem(key, JSON.stringify(entries));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event(changed));
+    }
+  } catch {
+    // safeStorage handles errors
+  }
 }
 
 export function useLocalLibrary() {

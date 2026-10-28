@@ -3,6 +3,20 @@ import { useCallback } from "react";
 import { CatalogPage, type CatalogSearch } from "@/components/catalog-page";
 export const Route = createFileRoute("/descobrir")({
   validateSearch: validateCatalogSearch,
+  head: () => ({
+    meta: [
+      { title: "Descobrir Mangás e Manhwas — Yae Manga House" },
+      {
+        name: "description",
+        content: "Explore novos mangás, manhwas e light novels com filtros por tipo, status e classificação.",
+      },
+      { property: "og:title", content: "Descobrir — Yae Manga House" },
+      {
+        property: "og:description",
+        content: "Encontre seu próximo mangá ou manhwa favorito na Yae Manga House.",
+      },
+    ],
+  }),
   component: DiscoverPage,
 });
 

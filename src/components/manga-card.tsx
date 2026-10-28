@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { BookmarkPlus, Play, Star } from "lucide-react";
+import { BookOpen, BookmarkPlus, Play, Star } from "lucide-react";
 import type { CatalogItem } from "@/types/content";
 import { useAgeGate } from "@/components/age-gate";
 import { useLocalLibrary } from "@/lib/local-library";
@@ -9,8 +10,9 @@ const kindLabel = { manga: "Mangá", manhwa: "Manhwa", "light-novel": "Light nov
 
 export function MangaCard({ manga }: { manga: CatalogItem }) {
   const navigate = useNavigate();
+  const [imgError, setImgError] = useState(false);
   const { guard, modal } = useAgeGate();
-  const { add, entries } = useLocalLibrary();
+  const { add, remove, entries } = useLocalLibrary();
   const { adultEnabled } = useAdultContent();
   const inLibrary = entries.some((entry) => entry.slug === manga.slug);
   if (manga.ageRating === "18+" && !adultEnabled) return null;
@@ -30,14 +32,25 @@ export function MangaCard({ manga }: { manga: CatalogItem }) {
         }}
         className="relative block w-full overflow-hidden rounded-2xl border border-border bg-surface text-left shadow-sm transition hover:-translate-y-1 hover:border-primary/60 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <img
-          src={manga.cover}
-          alt={`Capa de ${manga.title}`}
-          loading="lazy"
-          width={640}
-          height={960}
-          className="aspect-[2/3] w-full object-cover transition duration-500 group-hover:scale-105"
-        />
+        {!imgError ? (
+          <img
+            src={manga.cover}
+            alt={`Capa de ${manga.title}`}
+            loading="lazy"
+            decoding="async"
+            width={640}
+            height={960}
+            onError={() => setImgError(true)}
+            className="aspect-[2/3] w-full object-cover transition duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex aspect-[2/3] w-full flex-col items-center justify-center bg-gradient-to-br from-surface to-surface-2 p-3 text-center">
+            <BookOpen className="h-8 w-8 text-primary/40" />
+            <span className="mt-2 line-clamp-2 text-[11px] font-semibold text-muted-foreground">
+              {manga.title}
+            </span>
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
         <div className="absolute inset-x-2 top-2 flex items-start justify-between gap-2">
           <span className={`age-badge ${manga.ageRating === "18+" ? "adult" : ""}`}>
@@ -76,17 +89,21 @@ export function MangaCard({ manga }: { manga: CatalogItem }) {
           </p>
         </Link>
         <button
+          type="button"
           aria-label={
             inLibrary
-              ? `${manga.title} já está na biblioteca`
-              : `Adicionar ${manga.title} à biblioteca`
+              ? `Remover ${manga.title} da biblioteca`
+              : `Salvar ${manga.title} na biblioteca`
           }
           aria-pressed={inLibrary}
-          disabled={inLibrary}
-          onClick={() => add(manga)}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-surface hover:text-primary"
+          onClick={() => (inLibrary ? remove(manga.slug) : add(manga))}
+          className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl transition-colors ${
+            inLibrary
+              ? "bg-primary/15 text-primary"
+              : "text-muted-foreground hover:bg-surface hover:text-primary"
+          }`}
         >
-          <BookmarkPlus className="h-4 w-4" />
+          <BookmarkPlus className={`h-4 w-4 ${inLibrary ? "fill-primary" : ""}`} />
         </button>
       </div>
       {typeof manga.progress === "number" && (

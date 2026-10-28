@@ -1,0 +1,18 @@
+{
+  "name": "Yae Manga House",
+  "short_name": "Yae House",
+  "description": "Portal de mangás, manhwas e light novels em português do Brasil.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#121019",
+  "theme_color": "#e05697",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}

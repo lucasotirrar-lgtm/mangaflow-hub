@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
+import { safeStorage } from "@/lib/safe-storage";
 
 const key = "mangaflow-adult-enabled";
 const changed = "mangaflow-adult-preference-changed";
 
 function read() {
-  return localStorage.getItem(key) === "true";
+  return safeStorage.getItem(key) === "true";
 }
 
 export function useAdultContent() {
@@ -18,9 +19,11 @@ export function useAdultContent() {
   }, []);
 
   const setAdultEnabled = (value: boolean) => {
-    localStorage.setItem(key, String(value));
+    safeStorage.setItem(key, String(value));
     setEnabled(value);
-    window.dispatchEvent(new Event(changed));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event(changed));
+    }
   };
 
   return { adultEnabled: enabled, setAdultEnabled };

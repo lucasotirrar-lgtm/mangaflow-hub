@@ -15,7 +15,11 @@ export type HomeQueuesResponse = {
 };
 
 async function request<T>(path: string): Promise<T> {
-  const response = await fetch(`${apiBase}${path}`, { headers: { accept: "application/json" } });
+  const init: RequestInit = { headers: { accept: "application/json" } };
+  if (typeof AbortSignal !== "undefined" && "timeout" in AbortSignal) {
+    init.signal = AbortSignal.timeout(12_000);
+  }
+  const response = await fetch(`${apiBase}${path}`, init);
   if (!response.ok) throw new Error(`Catálogo indisponível (${response.status})`);
   return (await response.json()) as T;
 }
@@ -110,9 +114,18 @@ export const catalogService = {
     );
   },
   async pages(chapterId: string) {
-    return request<{ pages: Array<{ index: number; url: string }> }>(
+    const result = await request<{ pages: Array<{ index: number; url: string }> }>(
       `/api/v1/chapters/${encodeURIComponent(chapterId)}/pages`,
     );
+    return {
+      ...result,
+      pages: result.pages.map((page) => ({
+        ...page,
+        url: apiBase && page.url.startsWith("/") && !page.url.startsWith("//")
+          ? `${apiBase}${page.url}`
+          : page.url,
+      })),
+    };
   },
 };
 

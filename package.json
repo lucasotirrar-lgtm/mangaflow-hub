@@ -11,7 +11,9 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
-    "check": "npm run lint && npm run typecheck && npm run build"
+    "test": "node backend/chapter-manifest.test.cjs && node scripts/test-battery-bot.cjs",
+    "test:battery": "node scripts/test-battery-bot.cjs",
+    "check": "npm run typecheck && npm run build && npm run test:battery"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

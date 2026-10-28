@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { covers } from "@/data/manga";
 import { fallback, fetchGeneros } from "@/lib/cms";
@@ -40,9 +40,11 @@ function GenerosPage() {
 
       <div className="mt-8 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
         {generos.map((g) => (
-          <article
+          <Link
             key={g.nome}
-            className="group relative cursor-pointer overflow-hidden rounded-xl border border-border"
+            to="/buscar"
+            search={{ q: g.nome, page: 1 }}
+            className="group relative block overflow-hidden rounded-xl border border-border transition-transform hover:-translate-y-1 hover:border-primary/60 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <img
               src={g.image ?? ""}
@@ -56,7 +58,7 @@ function GenerosPage() {
             <h2 className="absolute inset-x-0 bottom-0 p-4 font-display text-lg font-extrabold transition-colors group-hover:text-primary">
               {g.nome}
             </h2>
-          </article>
+          </Link>
         ))}
       </div>
     </div>

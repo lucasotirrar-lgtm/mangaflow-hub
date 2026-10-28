@@ -64,12 +64,12 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
           >
             Tentar novamente
           </button>
-          <a
-            href="/"
+          <Link
+            to="/"
             className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
             Voltar ao início
-          </a>
+          </Link>
         </div>
       </div>
     </div>
@@ -85,6 +85,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "Portal de mangá, manhwa e anime em português." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "theme-color", content: "#121019" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
     ],
     links: [
       {
@@ -92,6 +96,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/favicon.ico" },
     ],
   }),
 
@@ -119,6 +125,18 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const immersiveReader = pathname.startsWith("/ler/");
+
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      "serviceWorker" in navigator &&
+      import.meta.env.PROD
+    ) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {
+        // Ignora silenciosamente se o ambiente não permitir Service Worker
+      });
+    }
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -49,12 +49,12 @@ export function SiteFooter() {
             <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
               {column.items.map((item) => (
                 <li key={item.to}>
-                  <a
-                    href={item.to}
+                  <Link
+                    to={item.to}
                     className="inline-flex min-h-11 items-center transition-colors hover:text-primary"
                   >
                     {item.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
