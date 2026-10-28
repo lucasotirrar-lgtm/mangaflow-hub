@@ -8,6 +8,7 @@ Express, SQLite persistente e sincronização controlada com MangaDex PT-BR.
 - Operação e recuperação: [docs/OPERATIONS.md](docs/OPERATIONS.md)
 - Arquitetura: [docs/BACKEND_ARCHITECTURE.md](docs/BACKEND_ARCHITECTURE.md)
 - Handoff completo e estado atual: [docs/PROJECT_HANDOFF.md](docs/PROJECT_HANDOFF.md)
+- Guia para Antigravity e mudanças no front: [docs/ANTIGRAVITY_HANDOFF.md](docs/ANTIGRAVITY_HANDOFF.md)
 - Auditoria final e próximos ajustes: [docs/FINAL_AUDIT_2026-09-02.md](docs/FINAL_AUDIT_2026-09-02.md)
 - Plano completo para finalizar: [docs/COMPLETION_PLAN_2026-09-02.md](docs/COMPLETION_PLAN_2026-09-02.md)
 

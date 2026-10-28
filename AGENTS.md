@@ -10,3 +10,11 @@
 > the editor, so keep the branch in a working state.
 
 <!-- LOVABLE:END -->
+
+## Continuidade para agentes e Antigravity
+
+Antes de alterar este projeto, leia `docs/ANTIGRAVITY_HANDOFF.md`. Preserve as
+alterações locais existentes e respeite o escopo pedido pelo proprietário.
+Para tarefas de interface, não altere backend, armazenamento, deploy, coleta ou
+credenciais sem necessidade e instrução do proprietário. O guia contém um
+retrato datado: revalide condições operacionais antes de agir em produção.
