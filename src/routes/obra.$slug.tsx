@@ -9,7 +9,6 @@ import {
   Languages,
   Play,
   Search,
-  Server,
   Share2,
   Star,
   X,
@@ -446,22 +445,29 @@ function Detail() {
         </section>
         <aside>
           <div className="side-card">
-            <h2>Fontes desta obra</h2>
-            <p>Capítulos PT-BR e imagens são entregues pelo servidor próprio.</p>
-            <div className="mt-4 space-y-2">
-              {item.sources.map((source) => (
-                <div className="source-row" key={source.id}>
-                  <Server />
-                  <div>
-                    <strong>{source.label}</strong>
-                    <span>{source.role === "primary" ? "Principal" : "Metadados"}</span>
-                  </div>
-                  <i className={source.available ? "online" : "offline"}>
-                    {source.available ? "Disponível" : "Indisponível"}
-                  </i>
-                </div>
-              ))}
-            </div>
+            <h2>Sobre esta obra</h2>
+            <dl className="mt-4 space-y-3 text-sm">
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">Formato</dt>
+                <dd className="font-semibold">
+                  {item.kind === "light-novel" ? "Light novel" : item.kind === "manhwa" ? "Manhwa" : "Mangá"}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">Idioma dos capítulos</dt>
+                <dd className="font-semibold">Português (Brasil)</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">Classificação</dt>
+                <dd className="font-semibold">
+                  {item.ageRating === "Livre"
+                    ? "Livre"
+                    : item.ageRating === "18+"
+                      ? "18+"
+                      : `${item.ageRating}+`}
+                </dd>
+              </div>
+            </dl>
           </div>
         </aside>
       </div>

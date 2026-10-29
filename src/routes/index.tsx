@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowRight, BookOpen, Database, Sparkles, Star } from "lucide-react";
+import { ArrowRight, BookOpen, Bookmark, Sparkles, Star } from "lucide-react";
 import { MangaCard, SectionTitle } from "@/components/manga-card";
 import { CatalogSkeleton, ProductState } from "@/components/product-states";
 import { catalogService } from "@/services/catalog-service";
@@ -81,12 +81,12 @@ function Home() {
           <div className="mb-auto flex flex-wrap gap-2">
             <span className="eyebrow">
               <Sparkles />
-              Destaque em português
+              Novidade em destaque
             </span>
             <span className="age-badge">{feature.ageRating}</span>
           </div>
           <p className="text-sm font-bold text-primary">
-            {feature.sources[0]?.label} · {feature.kind === "manhwa" ? "Manhwa" : "Mangá"}
+            {feature.language} · {feature.kind === "manhwa" ? "Manhwa" : "Mangá"}
           </p>
           <h1 className="mt-2 font-display text-4xl font-extrabold leading-none sm:text-6xl">
             {feature.title}
@@ -118,10 +118,10 @@ function Home() {
       </section>
       <section>
         <SectionTitle action="Ver catálogo" to="/mangas">
-          Novidades em PT-BR
+          Lançamentos recentes
         </SectionTitle>
         <div className="catalog-grid">
-          {releases.slice(0, 4).map((item) => (
+          {releases.slice(0, 6).map((item) => (
             <MangaCard key={item.id} manga={item} />
           ))}
         </div>
@@ -130,26 +130,26 @@ function Home() {
         <Link to="/buscar" search={{ q: "" }} className="quick-card">
           <BookOpen />
           <div>
-            <strong>Buscar no catálogo</strong>
-            <span>Obras e capítulos em português</span>
+            <strong>Explorar mangás</strong>
+            <span>Encontre sua próxima leitura</span>
           </div>
           <ArrowRight />
         </Link>
-        <Link to="/configuracoes" className="quick-card">
-          <Database />
+        <Link to="/biblioteca" className="quick-card">
+          <Bookmark />
           <div>
-            <strong>Fontes conectadas</strong>
-            <span>Atualização automática e cache próprio</span>
+            <strong>Sua biblioteca</strong>
+            <span>Continue de onde parou e organize favoritos</span>
           </div>
           <ArrowRight />
         </Link>
       </section>
       <section>
         <SectionTitle action="Descobrir mais" to="/descobrir">
-          Destaques
+          Atualizados recentemente
         </SectionTitle>
         <div className="catalog-grid">
-          {highlights.slice(0, 8).map((item) => (
+          {highlights.slice(0, 12).map((item) => (
             <MangaCard key={item.id} manga={item} />
           ))}
         </div>

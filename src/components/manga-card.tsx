@@ -85,7 +85,7 @@ export function MangaCard({ manga }: { manga: CatalogItem }) {
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
             {manga.latestChapter > 0 ? `Cap. ${manga.latestChapter} · ` : "Capítulo disponível · "}
-            {manga.sources[0]?.label}
+            PT-BR
           </p>
         </Link>
         <button
