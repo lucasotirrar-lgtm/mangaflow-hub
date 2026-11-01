@@ -8,7 +8,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -84,6 +84,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Yae Manga House" },
       { name: "description", content: "Portal de mangá, manhwa e anime em português." },
       { property: "og:type", content: "website" },
+      { property: "og:locale", content: "pt_BR" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "theme-color", content: "#121019" },
       { name: "mobile-web-app-capable", content: "yes" },
@@ -98,6 +99,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/favicon.ico" },
+      { rel: "preconnect", href: "https://manga.vexclaud.site" },
     ],
   }),
 
@@ -111,6 +113,12 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR" className="dark">
       <head>
+        {/* Inline theme script: prevents FOUC before CSS loads */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('yae-theme');document.documentElement.classList.toggle('dark',t!=='light')}catch(e){}})()`,
+          }}
+        />
         <HeadContent />
       </head>
       <body>
@@ -125,6 +133,20 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const immersiveReader = pathname.startsWith("/ler/");
+  const [isOffline, setIsOffline] = useState(
+    typeof navigator !== "undefined" ? !navigator.onLine : false,
+  );
+
+  useEffect(() => {
+    const goOffline = () => setIsOffline(true);
+    const goOnline = () => setIsOffline(false);
+    window.addEventListener("offline", goOffline);
+    window.addEventListener("online", goOnline);
+    return () => {
+      window.removeEventListener("offline", goOffline);
+      window.removeEventListener("online", goOnline);
+    };
+  }, []);
 
   useEffect(() => {
     if (
@@ -140,6 +162,16 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      {isOffline && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="fixed inset-x-0 top-0 z-[9999] flex items-center justify-center gap-2 bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground"
+        >
+          <span>⚠️</span>
+          <span>Sem conexão — você está offline. Algumas funções podem estar indisponíveis.</span>
+        </div>
+      )}
       {!immersiveReader && (
         <a href="#conteudo-principal" className="skip-link">
           Pular para o conteúdo

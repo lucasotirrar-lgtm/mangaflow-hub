@@ -804,6 +804,34 @@ test("V68", "DOM & Leitor", "Leitor mantém imagens com carregamento e decodific
   assert.ok(readerCode.includes('loading={page.index < 2 ? "eager" : "lazy"}'), "Deve carregar imagens sob demanda");
 });
 
+test("V69", "Onboarding", "Onboarding permite salvar e persistir preferências de catálogo", () => {
+  const onboardingPath = path.join(rootPath, "src", "routes", "onboarding.tsx");
+  const code = fs.readFileSync(onboardingPath, "utf-8");
+  assert.ok(code.includes("yae-onboarding-prefs"), "Deve definir chave de armazenamento de onboarding");
+  assert.ok(code.includes("safeStorage.setItem"), "Deve persistir preferências com safeStorage");
+});
+
+test("V70", "Configurações", "Configurações expõe e sincroniza opções de leitura e perfil real", () => {
+  const accountPath = path.join(rootPath, "src", "components", "account-page.tsx");
+  const code = fs.readFileSync(accountPath, "utf-8");
+  assert.ok(code.includes("mangaflow-reader-preferences"), "Deve sincronizar chave de leitura");
+  assert.ok(code.includes("Obras salvas"), "Deve expor contagem de obras salvas");
+  assert.ok(code.includes("Capítulos lidos"), "Deve expor contagem de capítulos lidos");
+});
+
+test("V71", "Tema & Performance", "Root shell inclui script em linha anti-FOUC para tema", () => {
+  const rootComponentPath = path.join(rootPath, "src", "routes", "__root.tsx");
+  const code = fs.readFileSync(rootComponentPath, "utf-8");
+  assert.ok(code.includes("yae-theme"), "Deve checar tema no armazenamento");
+  assert.ok(code.includes("dangerouslySetInnerHTML"), "Deve injetar script síncrono no head");
+});
+
+test("V72", "Header & UX", "Sino de notificações não exibe badge falso quando não há novos alertas", () => {
+  const headerPath = path.join(rootPath, "src", "components", "site-header.tsx");
+  const code = fs.readFileSync(headerPath, "utf-8");
+  assert.ok(!code.includes('span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary"'), "Não deve ter badge vermelho estático");
+});
+
 // ===========================================================================
 // RELATÓRIO FINAL
 // ===========================================================================

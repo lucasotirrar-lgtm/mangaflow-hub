@@ -75,7 +75,15 @@ function Home() {
   return (
     <main className="page-shell space-y-14 pb-28 lg:pb-12">
       <section className="hero-panel">
-        <img src={feature.cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <img
+          src={feature.cover}
+          alt={`Capa de ${feature.title}`}
+          fetchPriority="high"
+          decoding="async"
+          width={800}
+          height={1120}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
         <div className="absolute inset-0 bg-gradient-to-r from-background via-background/90 to-transparent" />
         <div className="relative z-10 flex min-h-[430px] max-w-2xl flex-col justify-end p-6 sm:min-h-[520px] sm:p-10">
           <div className="mb-auto flex flex-wrap gap-2">

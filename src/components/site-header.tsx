@@ -90,7 +90,6 @@ export function SiteHeader() {
             </button>
             <Link to="/notificacoes" aria-label="Notificações" className="icon-button relative">
               <Bell />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary" />
             </Link>
             <Link to="/perfil" aria-label="Perfil" className="icon-button">
               <User />
