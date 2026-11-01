@@ -15,23 +15,23 @@ por autenticação e CMS, mas não é o banco ativo do catálogo da Oracle.
 
 Produção está saudável em `https://manga.vexclaud.site`:
 
-| Item | Estado validado |
-| --- | --- |
-| API/ready | HTTP 200 |
-| Obras | 12.254 |
-| Obras públicas / +18 | 10.300 / 1.954 |
-| Capítulos PT-BR | 224.683 |
-| Obras com capítulos | 9.555 |
-| Assets disponíveis | 4.148 |
-| SQLite | `integrity_check=ok`, sem violações de FK |
-| API / worker / web | ativos; API saudável |
-| FreeLLMAPI | contêiner ativo e saudável |
-| Backup local | diário, validado |
-| Backup Google Drive | diário, validado, conta `Trabalho` |
-| Restauração real | SHA-256 e SQLite validados |
-| Telegram | Oracle Sentinel recebendo alertas sem LLM |
-| GitHub | `main` e `agent/mangaflow-real-catalog` sincronizadas |
-| OCI | gasto atual e previsto US$ 0 no orçamento verificado |
+| Item                 | Estado validado                                       |
+| -------------------- | ----------------------------------------------------- |
+| API/ready            | HTTP 200                                              |
+| Obras                | 12.254                                                |
+| Obras públicas / +18 | 10.300 / 1.954                                        |
+| Capítulos PT-BR      | 224.683                                               |
+| Obras com capítulos  | 9.555                                                 |
+| Assets disponíveis   | 4.148                                                 |
+| SQLite               | `integrity_check=ok`, sem violações de FK             |
+| API / worker / web   | ativos; API saudável                                  |
+| FreeLLMAPI           | contêiner ativo e saudável                            |
+| Backup local         | diário, validado                                      |
+| Backup Google Drive  | diário, validado, conta `Trabalho`                    |
+| Restauração real     | SHA-256 e SQLite validados                            |
+| Telegram             | Oracle Sentinel recebendo alertas sem LLM             |
+| GitHub               | `main` e `agent/mangaflow-real-catalog` sincronizadas |
+| OCI                  | gasto atual e previsto US$ 0 no orçamento verificado  |
 
 O código de aplicação implantado nesta manutenção corresponde ao commit
 `e8462be`; scripts operacionais e backup correspondem a `7dd4a47`. Commits de
@@ -65,23 +65,23 @@ sem revisão explícita do proprietário.
 
 ## 3. O que existe em cada área do repositório
 
-| Caminho | Responsabilidade |
-| --- | --- |
-| `backend/database.cjs` | inicialização e migração incremental do SQLite |
-| `backend/mangadex-client.cjs` | fila serial, rate limit, backoff e circuito MangaDex |
-| `backend/server.cjs` | API pública, mídia, ingestão e dashboard administrativo |
-| `backend/worker.cjs` | laços de sincronização pública, adulta, capítulos e full |
-| `src/routes/` | rotas TanStack do site e painel |
-| `src/services/catalog-service.ts` | cliente do catálogo da API Express |
-| `src/integrations/supabase/` | auth, sessão e clientes Supabase |
-| `src/lib/admin.functions.ts` | proteção e agregação do painel administrativo |
-| `supabase/migrations/` | CMS/auth e um domínio provider-agnostic ainda não canônico |
-| `deploy/docker-compose.yml` | stack unificada de referência: web, API e worker |
-| `deploy/coolify-local-backup.*` | backup local verificável e timer diário |
-| `deploy/vexclaud-offsite-backup.*` | cópia Google Drive e timer diário |
-| `deploy/verify-offsite-restore.sh` | restauração isolada e validação do banco |
-| `deploy/mangaflow-watchdog.sh` | monitor sem IA entregue ao Telegram |
-| `Dockerfile` | imagens multi-stage web/API/worker, compatíveis com ARM |
+| Caminho                            | Responsabilidade                                           |
+| ---------------------------------- | ---------------------------------------------------------- |
+| `backend/database.cjs`             | inicialização e migração incremental do SQLite             |
+| `backend/mangadex-client.cjs`      | fila serial, rate limit, backoff e circuito MangaDex       |
+| `backend/server.cjs`               | API pública, mídia, ingestão e dashboard administrativo    |
+| `backend/worker.cjs`               | laços de sincronização pública, adulta, capítulos e full   |
+| `src/routes/`                      | rotas TanStack do site e painel                            |
+| `src/services/catalog-service.ts`  | cliente do catálogo da API Express                         |
+| `src/integrations/supabase/`       | auth, sessão e clientes Supabase                           |
+| `src/lib/admin.functions.ts`       | proteção e agregação do painel administrativo              |
+| `supabase/migrations/`             | CMS/auth e um domínio provider-agnostic ainda não canônico |
+| `deploy/docker-compose.yml`        | stack unificada de referência: web, API e worker           |
+| `deploy/coolify-local-backup.*`    | backup local verificável e timer diário                    |
+| `deploy/vexclaud-offsite-backup.*` | cópia Google Drive e timer diário                          |
+| `deploy/verify-offsite-restore.sh` | restauração isolada e validação do banco                   |
+| `deploy/mangaflow-watchdog.sh`     | monitor sem IA entregue ao Telegram                        |
+| `Dockerfile`                       | imagens multi-stage web/API/worker, compatíveis com ARM    |
 
 `src/data/manga.ts` contém dados visuais/fallback; não é o catálogo vivo. As
 migrações Supabase da fase provider-agnostic representam uma direção futura e
@@ -92,21 +92,21 @@ não substituem o SQLite ativo sem uma migração planejada e testada.
 O acesso administrativo usa o alias SSH `coolify-main`. Não grave endereço,
 senha ou chave no Git. A VPS principal é `coolify-arm-free`.
 
-| Função | Caminho ou recurso em produção |
-| --- | --- |
-| API/worker source | `/opt/mangaflow-hub/release-router` |
-| Frontend source | `/opt/mangaflow-hub/release-vercel-fix` |
-| Variáveis reais | `/opt/mangaflow-hub/.env` |
-| Compose API/worker | `release-router/deploy/docker-compose.yml` |
-| Compose frontend | `release-vercel-fix/deploy/docker-compose.yml` |
-| API | `deploy-api-1`, porta interna 3100 |
-| Worker | `deploy-worker-1` |
-| Frontend SSR | `mangaflow-web-1`, porta interna 3000 |
-| Proxy/TLS | `dokploy-traefik`, rede `dokploy-network` |
-| Volume persistente | `deploy_mangaflow_data` |
-| Banco | `/data/mangaflow.db` dentro do volume |
-| Assets | `/data/assets` dentro do volume |
-| Cursores legados | `/data/sync_offset.json`, `/data/sync_adult_offset.json` |
+| Função             | Caminho ou recurso em produção                           |
+| ------------------ | -------------------------------------------------------- |
+| API/worker source  | `/opt/mangaflow-hub/release-router`                      |
+| Frontend source    | `/opt/mangaflow-hub/release-vercel-fix`                  |
+| Variáveis reais    | `/opt/mangaflow-hub/.env`                                |
+| Compose API/worker | `release-router/deploy/docker-compose.yml`               |
+| Compose frontend   | `release-vercel-fix/deploy/docker-compose.yml`           |
+| API                | `deploy-api-1`, porta interna 3100                       |
+| Worker             | `deploy-worker-1`                                        |
+| Frontend SSR       | `mangaflow-web-1`, porta interna 3000                    |
+| Proxy/TLS          | `dokploy-traefik`, rede `dokploy-network`                |
+| Volume persistente | `deploy_mangaflow_data`                                  |
+| Banco              | `/data/mangaflow.db` dentro do volume                    |
+| Assets             | `/data/assets` dentro do volume                          |
+| Cursores legados   | `/data/sync_offset.json`, `/data/sync_adult_offset.json` |
 
 A árvore de produção está dividida entre dois releases, apesar de o repositório
 ser unificado. Não presuma que copiar o repositório inteiro sobre um dos
@@ -116,15 +116,15 @@ releases é seguro. API/worker e frontend devem ser reconciliados separadamente.
 
 Esta é a prioridade operacional máxima. Estado OCI validado:
 
-| Recurso | Alocação observada |
-| --- | --- |
-| ARM principal | `VM.Standard.A1.Flex`, 2 OCPU, 12 GB RAM |
-| AMD auxiliar | `VM.Standard.E2.1.Micro`, 1 OCPU, 1 GB RAM |
-| Boot volumes | 153 GB + 47 GB = 200 GB |
-| Block volumes adicionais | nenhum |
-| Load Balancer flexível | mínimo 10 Mbps, máximo 10 Mbps |
-| Budget | `Always-Free-Guardrail`, limite US$ 5 |
-| Gasto/forecast observado | US$ 0 / US$ 0 |
+| Recurso                  | Alocação observada                         |
+| ------------------------ | ------------------------------------------ |
+| ARM principal            | `VM.Standard.A1.Flex`, 2 OCPU, 12 GB RAM   |
+| AMD auxiliar             | `VM.Standard.E2.1.Micro`, 1 OCPU, 1 GB RAM |
+| Boot volumes             | 153 GB + 47 GB = 200 GB                    |
+| Block volumes adicionais | nenhum                                     |
+| Load Balancer flexível   | mínimo 10 Mbps, máximo 10 Mbps             |
+| Budget                   | `Always-Free-Guardrail`, limite US$ 5      |
+| Gasto/forecast observado | US$ 0 / US$ 0                              |
 
 Regras obrigatórias:
 
@@ -157,16 +157,16 @@ fazem parte do backup VEXCLAUD e de outros projetos da VPS.
 Pragmas aplicados: WAL, `synchronous=NORMAL`, `busy_timeout=5000` e foreign
 keys habilitadas.
 
-| Tabela | Uso |
-| --- | --- |
-| `works` | obra canônica local, classificação, idiomas, metadata e slug |
-| `chapters` | releases PT-BR; duplicatas por volume/número podem coexistir |
-| `assets` | capas e páginas baixadas, hash, tamanho e estado |
-| `sync_runs` | auditoria de execuções com métricas; retenção de 30 dias |
-| `sync_cursors` | offset/high-water por provider, lane e modo |
-| `work_sync_state` | próxima checagem e falhas por obra |
-| `provider_health` | backoff e circuit breaker do MangaDex |
-| `works_fts` | FTS5 de título e título alternativo |
+| Tabela            | Uso                                                          |
+| ----------------- | ------------------------------------------------------------ |
+| `works`           | obra canônica local, classificação, idiomas, metadata e slug |
+| `chapters`        | releases PT-BR; duplicatas por volume/número podem coexistir |
+| `assets`          | capas e páginas baixadas, hash, tamanho e estado             |
+| `sync_runs`       | auditoria de execuções com métricas; retenção de 30 dias     |
+| `sync_cursors`    | offset/high-water por provider, lane e modo                  |
+| `work_sync_state` | próxima checagem e falhas por obra                           |
+| `provider_health` | backoff e circuit breaker do MangaDex                        |
+| `works_fts`       | FTS5 de título e título alternativo                          |
 
 Índices cobrem título, atualização do provider, capítulos por obra, agenda e
 execuções. Triggers mantêm o FTS sincronizado. O banco é criado/migrado pelo
@@ -189,18 +189,18 @@ Snapshot vivo detalhado em 01/09/2026 01:51 UTC:
 
 Rotas públicas:
 
-| Método/rota | Observação |
-| --- | --- |
-| `GET /api/v1/health` | contagens de obras, capítulos e assets |
-| `GET /api/v1/ready` | consulta simples ao SQLite |
-| `GET /api/v1/catalog` | `page`, `limit` máximo 48, `adult=true/false` |
-| `GET /api/v1/search` | `q` mínimo 2, FTS5, até 24 resultados |
-| `GET /api/v1/works/:slug` | detalhe da obra |
-| `GET /api/v1/works/:slug/chapters` | página, limite máximo 100 |
-| `GET /api/v1/chapters/:id` | metadados do capítulo |
-| `GET /api/v1/chapters/:id/pages` | URLs internas das páginas |
-| `GET /api/v1/media/cover/:workId` | cache permanente por SHA |
-| `GET /api/v1/media/chapter/:id/:index` | baixa e serve a página sob demanda |
+| Método/rota                            | Observação                                    |
+| -------------------------------------- | --------------------------------------------- |
+| `GET /api/v1/health`                   | contagens de obras, capítulos e assets        |
+| `GET /api/v1/ready`                    | consulta simples ao SQLite                    |
+| `GET /api/v1/catalog`                  | `page`, `limit` máximo 48, `adult=true/false` |
+| `GET /api/v1/search`                   | `q` mínimo 2, FTS5, até 24 resultados         |
+| `GET /api/v1/works/:slug`              | detalhe da obra                               |
+| `GET /api/v1/works/:slug/chapters`     | página, limite máximo 100                     |
+| `GET /api/v1/chapters/:id`             | metadados do capítulo                         |
+| `GET /api/v1/chapters/:id/pages`       | URLs internas das páginas                     |
+| `GET /api/v1/media/cover/:workId`      | cache permanente por SHA                      |
+| `GET /api/v1/media/chapter/:id/:index` | baixa e serve a página sob demanda            |
 
 Rotas administrativas exigem `x-admin-token` igual a
 `MANGAFLOW_ADMIN_TOKEN`:
@@ -223,13 +223,13 @@ circuito por 15 minutos. O cabeçalho `Retry-After` é respeitado.
 
 Loops do worker:
 
-| Loop | Intervalo nominal | Comportamento |
-| --- | --- | --- |
-| catálogo comum incremental | 15 min | até encontrar high-water |
-| catálogo +18 incremental | 60 min | lane separada |
-| capítulos | 1 s com fila | até 100 obras por lote |
-| full comum | 7 dias | lanes `safe` e `suggestive` |
-| full +18 | 7 dias | lanes `erotica` e `pornographic` |
+| Loop                       | Intervalo nominal | Comportamento                    |
+| -------------------------- | ----------------- | -------------------------------- |
+| catálogo comum incremental | 15 min            | até encontrar high-water         |
+| catálogo +18 incremental   | 60 min            | lane separada                    |
+| capítulos                  | 1 s com fila      | até 100 obras por lote           |
+| full comum                 | 7 dias            | lanes `safe` e `suggestive`      |
+| full +18                   | 7 dias            | lanes `erotica` e `pornographic` |
 
 Quando não há capítulo vencido, a API não cria `sync_runs`; retorna
 `nextCheckAt` e `retryAfterMs`, e o worker espera entre 30 s e 15 min. Isso

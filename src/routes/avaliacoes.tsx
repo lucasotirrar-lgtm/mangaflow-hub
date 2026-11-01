@@ -37,8 +37,8 @@ function AvaliacoesPage() {
         <div>
           <h2 className="font-display text-xl font-bold">Em breve</h2>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-            O sistema de avaliações está em desenvolvimento. Em breve você poderá avaliar obras,
-            ver as notas da comunidade e ler resenhas dos leitores.
+            O sistema de avaliações está em desenvolvimento. Em breve você poderá avaliar obras, ver
+            as notas da comunidade e ler resenhas dos leitores.
           </p>
         </div>
         <Link to="/descobrir" className="primary-button mt-2">

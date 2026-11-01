@@ -15,15 +15,15 @@ Ha tambem um bloqueador de leitura: a obra `Air Gear` lista capitulos, mas o end
 
 ## Evidencias verificadas em producao
 
-| Fluxo | Resultado observado |
-| --- | --- |
-| Catalogo publico | 10.300 obras; 48 itens por pagina; pagina 1 de 215; ultima pagina com 28 itens. |
+| Fluxo                     | Resultado observado                                                                                                                                                    |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Catalogo publico          | 10.300 obras; 48 itens por pagina; pagina 1 de 215; ultima pagina com 28 itens.                                                                                        |
 | Filtro `Formato = manhwa` | Pagina 1 mostrou 2 itens, mas manteve `10.300 no catalogo` e `1 de 215`; na pagina 2 mostrou 13 itens e continuou `2 de 215`. O filtro e local e invalida a paginacao. |
-| Largura movel 390 px | Sem overflow horizontal da pagina; a barra de filtros rola horizontalmente e a navegacao inferior aparece. |
-| Busca `air gear` | Retornou 1 resultado. A interface promete pesquisar generos, mas a API atual pesquisa somente titulo/titulo alternativo. |
-| Obra `Air Gear` | Carregou, mostrou os capitulos e ofereceu "Carregar mais capitulos". O botao de biblioteca esta desabilitado. |
-| Leitor do capitulo 358 | Metadados do capitulo respondem 200, porem `/api/v1/chapters/{id}/pages` respondeu 503; o leitor nao exibiu paginas. |
-| Limite da API | Uma solicitacao `limit=49` retornou `limit=48`; o teto e 48. |
+| Largura movel 390 px      | Sem overflow horizontal da pagina; a barra de filtros rola horizontalmente e a navegacao inferior aparece.                                                             |
+| Busca `air gear`          | Retornou 1 resultado. A interface promete pesquisar generos, mas a API atual pesquisa somente titulo/titulo alternativo.                                               |
+| Obra `Air Gear`           | Carregou, mostrou os capitulos e ofereceu "Carregar mais capitulos". O botao de biblioteca esta desabilitado.                                                          |
+| Leitor do capitulo 358    | Metadados do capitulo respondem 200, porem `/api/v1/chapters/{id}/pages` respondeu 503; o leitor nao exibiu paginas.                                                   |
+| Limite da API             | Uma solicitacao `limit=49` retornou `limit=48`; o teto e 48.                                                                                                           |
 
 ## Problemas encontrados
 

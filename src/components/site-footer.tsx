@@ -62,9 +62,13 @@ export function SiteFooter() {
         ))}
       </div>
       <div className="border-t border-border px-4 py-3 text-center text-[11px] leading-relaxed text-muted-foreground lg:px-8">
-        <p>© {new Date().getFullYear()} Yae Manga House · Projeto independente, sem vínculo oficial com autores ou editoras.</p>
+        <p>
+          © {new Date().getFullYear()} Yae Manga House · Projeto independente, sem vínculo oficial
+          com autores ou editoras.
+        </p>
         <p className="mx-auto mt-1 max-w-4xl">
-          Obras, personagens e marcas pertencem aos respectivos titulares. A inclusão de uma obra não implica vínculo ou endosso oficial; informações e disponibilidade podem variar.
+          Obras, personagens e marcas pertencem aos respectivos titulares. A inclusão de uma obra
+          não implica vínculo ou endosso oficial; informações e disponibilidade podem variar.
         </p>
       </div>
     </footer>

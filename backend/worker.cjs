@@ -49,6 +49,12 @@ async function runLoop({ name, url, intervalMs, timeoutMs = 5 * 60 * 1000, immed
   }
 }
 
+const enableSecondary = process.env.MANGAFLOW_ENABLE_SECONDARY_PROVIDER === "true";
+const backfillIntervalMs = Number(process.env.MANGAFLOW_BACKFILL_INTERVAL_MS || 5 * 60 * 1000);
+const backfillEndpoint =
+  process.env.MANGAFLOW_API_BACKFILL_INTERNAL_URL ||
+  endpoint.replace(/\/sync$/, "/sync-provider-backfill");
+
 void runLoop({ name: "sync", url: endpoint, intervalMs: incrementalIntervalMs });
 void runLoop({ name: "sync-adult", url: adultEndpoint, intervalMs: adultIntervalMs });
 void runLoop({
@@ -71,3 +77,13 @@ void runLoop({
   timeoutMs: 15 * 60 * 1000,
   immediate: false,
 });
+
+if (enableSecondary) {
+  void runLoop({
+    name: "sync-provider-backfill",
+    url: backfillEndpoint,
+    intervalMs: backfillIntervalMs,
+    timeoutMs: 10 * 60 * 1000,
+    immediate: false,
+  });
+}

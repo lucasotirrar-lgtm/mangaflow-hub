@@ -71,9 +71,7 @@ function Detail() {
     const q = chapterFilter.trim().toLowerCase();
     if (q) {
       list = list.filter(
-        (ch) =>
-          String(ch.number).includes(q) ||
-          (ch.title && ch.title.toLowerCase().includes(q)),
+        (ch) => String(ch.number).includes(q) || (ch.title && ch.title.toLowerCase().includes(q)),
       );
     }
     if (sortOrder === "asc") {
@@ -212,9 +210,7 @@ function Detail() {
           ) : (
             <div className="mx-auto flex aspect-[2/3] w-44 flex-col items-center justify-center rounded-2xl border border-border bg-surface p-4 text-center shadow-2xl sm:w-full">
               <BookOpen className="h-12 w-12 text-primary/50" />
-              <span className="mt-2 text-xs font-semibold text-muted-foreground">
-                {item.title}
-              </span>
+              <span className="mt-2 text-xs font-semibold text-muted-foreground">{item.title}</span>
             </div>
           )}
           <div className="self-end">
@@ -450,7 +446,11 @@ function Detail() {
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Formato</dt>
                 <dd className="font-semibold">
-                  {item.kind === "light-novel" ? "Light novel" : item.kind === "manhwa" ? "Manhwa" : "Mangá"}
+                  {item.kind === "light-novel"
+                    ? "Light novel"
+                    : item.kind === "manhwa"
+                      ? "Manhwa"
+                      : "Mangá"}
                 </dd>
               </div>
               <div className="flex justify-between gap-3">

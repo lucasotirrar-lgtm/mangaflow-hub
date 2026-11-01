@@ -8,7 +8,8 @@ export const Route = createFileRoute("/descobrir")({
       { title: "Descobrir Mangás e Manhwas — Yae Manga House" },
       {
         name: "description",
-        content: "Explore novos mangás, manhwas e light novels com filtros por tipo, status e classificação.",
+        content:
+          "Explore novos mangás, manhwas e light novels com filtros por tipo, status e classificação.",
       },
       { property: "og:title", content: "Descobrir — Yae Manga House" },
       {

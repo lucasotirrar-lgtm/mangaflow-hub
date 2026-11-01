@@ -100,12 +100,42 @@ async function initialize() {
   await ensureColumn("works", "provider_updated_at", "TEXT");
   await ensureColumn("works", "title_language", "TEXT");
   await ensureColumn("works", "synopsis_language", "TEXT");
+  await ensureColumn("chapters", "normalized_number", "TEXT");
+  await ensureColumn("chapters", "raw_number", "TEXT");
+  await ensureColumn("chapters", "source_variant", "TEXT");
   await ensureColumn("sync_runs", "job_type", "TEXT NOT NULL DEFAULT 'catalog_incremental'");
   await ensureColumn("sync_runs", "examined_count", "INTEGER NOT NULL DEFAULT 0");
   await ensureColumn("sync_runs", "changed_count", "INTEGER NOT NULL DEFAULT 0");
   await ensureColumn("sync_runs", "request_count", "INTEGER NOT NULL DEFAULT 0");
   await ensureColumn("sync_runs", "duration_ms", "INTEGER NOT NULL DEFAULT 0");
 
+  await run(`CREATE TABLE IF NOT EXISTS work_external_mappings (
+    id TEXT PRIMARY KEY,
+    work_id TEXT NOT NULL REFERENCES works(id) ON DELETE CASCADE,
+    provider TEXT NOT NULL,
+    external_id TEXT NOT NULL,
+    external_slug TEXT,
+    title TEXT,
+    match_confidence REAL NOT NULL DEFAULT 0,
+    match_method TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'approved',
+    details_json TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(provider, external_id)
+  )`);
+  await run(`CREATE TABLE IF NOT EXISTS provider_work_sync_state (
+    work_id TEXT NOT NULL REFERENCES works(id) ON DELETE CASCADE,
+    provider TEXT NOT NULL,
+    last_checked_at TEXT,
+    next_check_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_status TEXT,
+    consecutive_failures INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT,
+    cursor TEXT,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(work_id, provider)
+  )`);
   await run(`CREATE TABLE IF NOT EXISTS sync_cursors (
     provider TEXT NOT NULL,
     lane TEXT NOT NULL,
@@ -180,6 +210,15 @@ async function initialize() {
   await run("CREATE INDEX IF NOT EXISTS chapters_work_language_idx ON chapters(work_id, language)");
   await run(
     "CREATE INDEX IF NOT EXISTS chapters_queue_idx ON chapters(language, updated_at DESC, work_id)",
+  );
+  await run(
+    "CREATE INDEX IF NOT EXISTS chapters_normalized_num_idx ON chapters(work_id, normalized_number)",
+  );
+  await run(
+    "CREATE INDEX IF NOT EXISTS work_ext_mappings_work_idx ON work_external_mappings(work_id, provider)",
+  );
+  await run(
+    "CREATE INDEX IF NOT EXISTS provider_sync_schedule_idx ON provider_work_sync_state(provider, next_check_at)",
   );
   await run("CREATE INDEX IF NOT EXISTS chapter_schedule_idx ON work_sync_state(next_check_at)");
   await run("CREATE INDEX IF NOT EXISTS sync_runs_started_idx ON sync_runs(started_at)");

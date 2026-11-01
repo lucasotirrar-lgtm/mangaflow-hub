@@ -149,11 +149,7 @@ function RootComponent() {
   }, []);
 
   useEffect(() => {
-    if (
-      typeof window !== "undefined" &&
-      "serviceWorker" in navigator &&
-      import.meta.env.PROD
-    ) {
+    if (typeof window !== "undefined" && "serviceWorker" in navigator && import.meta.env.PROD) {
       navigator.serviceWorker.register("/sw.js").catch(() => {
         // Ignora silenciosamente se o ambiente não permitir Service Worker
       });

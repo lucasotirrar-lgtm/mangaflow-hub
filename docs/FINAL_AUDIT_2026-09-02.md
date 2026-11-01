@@ -19,23 +19,23 @@ da Oracle foi desligado para isso.
 
 ## Estado validado
 
-| Area | Estado |
-| --- | --- |
-| Site publico | `https://manga.vexclaud.site/` carregou sem erro de console |
-| Home | filas `Novidades em PT-BR`, `Destaques` e, quando ligado, lista adulta |
-| Descobrir | pagina 1 com 48 imagens e contagem publica de 8.689 obras |
-| Lista adulta | com preferencia local ligada, mostrou 873 obras adultas |
-| Obra | `Akebi-chan no Sailor Fuku` abriu com 63 capitulos PT-BR |
-| Leitor | capitulo `50.5` abriu com 30 imagens |
-| API health | `ok=true`, 12.258 obras, 224.833 capitulos, 4.750 assets |
-| SQLite | `integrity_check=ok` |
-| Banco vivo | 12.258 obras: 10.304 publicas e 1.954 adultas |
-| Obras com capitulos | 9.562 |
-| Assets registrados | 4.789 no banco no momento da consulta direta |
-| Containers | web, API e worker ativos; API healthy |
-| FreeLLMAPI | container ativo e healthy |
-| Backup local | timer ativo, proxima execucao em 2026-09-02 02:23 UTC |
-| Backup Drive Trabalho | timer ativo, proxima execucao em 2026-09-02 03:02 UTC |
+| Area                       | Estado                                                                        |
+| -------------------------- | ----------------------------------------------------------------------------- |
+| Site publico               | `https://manga.vexclaud.site/` carregou sem erro de console                   |
+| Home                       | filas `Novidades em PT-BR`, `Destaques` e, quando ligado, lista adulta        |
+| Descobrir                  | pagina 1 com 48 imagens e contagem publica de 8.689 obras                     |
+| Lista adulta               | com preferencia local ligada, mostrou 873 obras adultas                       |
+| Obra                       | `Akebi-chan no Sailor Fuku` abriu com 63 capitulos PT-BR                      |
+| Leitor                     | capitulo `50.5` abriu com 30 imagens                                          |
+| API health                 | `ok=true`, 12.258 obras, 224.833 capitulos, 4.750 assets                      |
+| SQLite                     | `integrity_check=ok`                                                          |
+| Banco vivo                 | 12.258 obras: 10.304 publicas e 1.954 adultas                                 |
+| Obras com capitulos        | 9.562                                                                         |
+| Assets registrados         | 4.789 no banco no momento da consulta direta                                  |
+| Containers                 | web, API e worker ativos; API healthy                                         |
+| FreeLLMAPI                 | container ativo e healthy                                                     |
+| Backup local               | timer ativo, proxima execucao em 2026-09-02 02:23 UTC                         |
+| Backup Drive Trabalho      | timer ativo, proxima execucao em 2026-09-02 03:02 UTC                         |
 | Ultima verificacao offsite | `trabalho:VEXCLAUD/backups/system/20260901-022219`, 11 arquivos, 0 diferencas |
 
 Observacao sobre assets: `/api/v1/health` e consulta direta podem diferir por

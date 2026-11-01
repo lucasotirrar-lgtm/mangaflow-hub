@@ -1,5 +1,15 @@
 import { Link } from "@tanstack/react-router";
-import { Bell, BookMarked, BookOpen, Heart, ListPlus, Play, Settings, Trash2, User } from "lucide-react";
+import {
+  Bell,
+  BookMarked,
+  BookOpen,
+  Heart,
+  ListPlus,
+  Play,
+  Settings,
+  Trash2,
+  User,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { MangaCard } from "@/components/manga-card";
 import { ProductState } from "@/components/product-states";
@@ -233,8 +243,8 @@ function ConfigSection() {
       <section className="side-card">
         <h2>Conteúdo adulto</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Ao ativar, a lista adulta fica disponível e não mostra aviso novamente neste
-          dispositivo. Ao desligar, obras adultas deixam de aparecer no site.
+          Ao ativar, a lista adulta fica disponível e não mostra aviso novamente neste dispositivo.
+          Ao desligar, obras adultas deixam de aparecer no site.
         </p>
         <button
           type="button"

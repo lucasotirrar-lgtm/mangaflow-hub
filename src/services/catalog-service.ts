@@ -121,9 +121,10 @@ export const catalogService = {
       ...result,
       pages: result.pages.map((page) => ({
         ...page,
-        url: apiBase && page.url.startsWith("/") && !page.url.startsWith("//")
-          ? `${apiBase}${page.url}`
-          : page.url,
+        url:
+          apiBase && page.url.startsWith("/") && !page.url.startsWith("//")
+            ? `${apiBase}${page.url}`
+            : page.url,
       })),
     };
   },

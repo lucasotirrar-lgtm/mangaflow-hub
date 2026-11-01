@@ -11,11 +11,7 @@ import {
 } from "lucide-react";
 import { catalogService } from "@/services/catalog-service";
 import type { Chapter } from "@/types/content";
-import {
-  getSavedReadingPage,
-  rememberReading,
-  updateReadingPage,
-} from "@/lib/reading-history";
+import { getSavedReadingPage, rememberReading, updateReadingPage } from "@/lib/reading-history";
 import { safeStorage } from "@/lib/safe-storage";
 
 export const Route = createFileRoute("/ler/$slug/$chapter")({
@@ -367,10 +363,7 @@ function Reader() {
         )}
 
         <div className="ml-auto flex items-center gap-1">
-          <button
-            aria-label="Recarregar capítulo"
-            onClick={() => setReloadKey((k) => k + 1)}
-          >
+          <button aria-label="Recarregar capítulo" onClick={() => setReloadKey((k) => k + 1)}>
             <RefreshCw />
           </button>
           <button
@@ -506,17 +499,13 @@ function Reader() {
                   decoding="async"
                   fetchPriority="high"
                   className="max-h-[88vh] w-auto max-w-full rounded-lg object-contain shadow-2xl"
-                  onError={() =>
-                    setFailedImages((items) => [...items, activeSinglePage.index])
-                  }
+                  onError={() => setFailedImages((items) => [...items, activeSinglePage.index])}
                 />
               )
             )}
           </div>
 
-          <div
-            className="mt-4 flex w-full max-w-[500px] items-center gap-3 rounded-full border border-border/80 bg-background/90 px-4 py-2 shadow-lg backdrop-blur"
-          >
+          <div className="mt-4 flex w-full max-w-[500px] items-center gap-3 rounded-full border border-border/80 bg-background/90 px-4 py-2 shadow-lg backdrop-blur">
             <button
               className="grid h-8 w-8 place-items-center rounded-full hover:bg-surface"
               aria-label="Página anterior"

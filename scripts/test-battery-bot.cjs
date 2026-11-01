@@ -60,8 +60,12 @@ async function testAsync(id, group, description, fn) {
   }
 }
 
-console.log(`\n${c.bold}${c.magenta}🤖 INICIANDO BATERIA DE TESTES DE SIMULAÇÃO DE USUÁRIOS REAIS${c.reset}`);
-console.log(`${c.gray}Testando 65 variações em storage, leitor, filtros, navegação, SEO e PWA...${c.reset}\n`);
+console.log(
+  `\n${c.bold}${c.magenta}🤖 INICIANDO BATERIA DE TESTES DE SIMULAÇÃO DE USUÁRIOS REAIS${c.reset}`,
+);
+console.log(
+  `${c.gray}Testando 65 variações em storage, leitor, filtros, navegação, SEO e PWA...${c.reset}\n`,
+);
 
 // ---------------------------------------------------------------------------
 // AMBIENTE SIMULADO (MOCKS PARA TESTE EM NODE SEM BROWSER)
@@ -101,80 +105,105 @@ test("V01", "Storage", "Usuário Novo: visita limpa, sem estante e sem históric
   assert.strictEqual(storage.getItem("yae-theme"), null);
 });
 
-test("V02", "Storage", "Leitor Assíduo: adiciona 5 obras na estante e recupera sem corrupção", () => {
-  const storage = createSafeStorageMock("normal");
-  const library = [
-    { slug: "obra-1", title: "Solo Leveling" },
-    { slug: "obra-2", title: "One Piece" },
-    { slug: "obra-3", title: "Frieren" },
-    { slug: "obra-4", title: "Omniscient Reader" },
-    { slug: "obra-5", title: "Chainsaw Man" },
-  ];
-  storage.setItem("mangaflow-library-v1", JSON.stringify(library));
-  const retrieved = JSON.parse(storage.getItem("mangaflow-library-v1"));
-  assert.strictEqual(retrieved.length, 5);
-  assert.strictEqual(retrieved[0].slug, "obra-1");
-  assert.strictEqual(retrieved[4].slug, "obra-5");
-});
+test(
+  "V02",
+  "Storage",
+  "Leitor Assíduo: adiciona 5 obras na estante e recupera sem corrupção",
+  () => {
+    const storage = createSafeStorageMock("normal");
+    const library = [
+      { slug: "obra-1", title: "Solo Leveling" },
+      { slug: "obra-2", title: "One Piece" },
+      { slug: "obra-3", title: "Frieren" },
+      { slug: "obra-4", title: "Omniscient Reader" },
+      { slug: "obra-5", title: "Chainsaw Man" },
+    ];
+    storage.setItem("mangaflow-library-v1", JSON.stringify(library));
+    const retrieved = JSON.parse(storage.getItem("mangaflow-library-v1"));
+    assert.strictEqual(retrieved.length, 5);
+    assert.strictEqual(retrieved[0].slug, "obra-1");
+    assert.strictEqual(retrieved[4].slug, "obra-5");
+  },
+);
 
-test("V03", "Storage", "Usuário em Modo Anônimo / Quota Excedida: fallback em memória resiliente", () => {
-  const brokenStorage = createSafeStorageMock("quota-exceeded");
-  const memoryFallback = new Map();
+test(
+  "V03",
+  "Storage",
+  "Usuário em Modo Anônimo / Quota Excedida: fallback em memória resiliente",
+  () => {
+    const brokenStorage = createSafeStorageMock("quota-exceeded");
+    const memoryFallback = new Map();
 
-  function safeSetItem(k, v) {
-    memoryFallback.set(k, v);
+    function safeSetItem(k, v) {
+      memoryFallback.set(k, v);
+      try {
+        brokenStorage.setItem(k, v);
+      } catch {
+        // Ignora erro de cota e mantém na memória
+      }
+    }
+
+    function safeGetItem(k) {
+      try {
+        const val = brokenStorage.getItem(k);
+        return val !== null ? val : memoryFallback.get(k) || null;
+      } catch {
+        return memoryFallback.get(k) || null;
+      }
+    }
+
+    safeSetItem("mangaflow-theme", "dark");
+    assert.strictEqual(safeGetItem("mangaflow-theme"), "dark");
+    assert.strictEqual(memoryFallback.get("mangaflow-theme"), "dark");
+  },
+);
+
+test(
+  "V04",
+  "Storage",
+  "Usuário Safari Restrito / SecurityError: bloqueio capturado sem quebra de página",
+  () => {
+    const lockedStorage = createSafeStorageMock("security-error");
+    let errorCaught = false;
     try {
-      brokenStorage.setItem(k, v);
-    } catch {
-      // Ignora erro de cota e mantém na memória
+      lockedStorage.setItem("test", "val");
+    } catch (err) {
+      errorCaught = err.message.includes("SecurityError");
     }
-  }
+    assert.strictEqual(errorCaught, true);
+  },
+);
 
-  function safeGetItem(k) {
-    try {
-      const val = brokenStorage.getItem(k);
-      return val !== null ? val : (memoryFallback.get(k) || null);
-    } catch {
-      return memoryFallback.get(k) || null;
-    }
-  }
+test(
+  "V05",
+  "Storage",
+  "Idempotência da Biblioteca: duplicar clique não duplica obra na estante",
+  () => {
+    let list = [];
+    const add = (item) => {
+      if (!list.some((e) => e.slug === item.slug)) {
+        list = [item, ...list];
+      }
+    };
+    add({ slug: "frieren", title: "Frieren" });
+    add({ slug: "frieren", title: "Frieren" });
+    add({ slug: "frieren", title: "Frieren" });
+    assert.strictEqual(list.length, 1);
+  },
+);
 
-  safeSetItem("mangaflow-theme", "dark");
-  assert.strictEqual(safeGetItem("mangaflow-theme"), "dark");
-  assert.strictEqual(memoryFallback.get("mangaflow-theme"), "dark");
-});
-
-test("V04", "Storage", "Usuário Safari Restrito / SecurityError: bloqueio capturado sem quebra de página", () => {
-  const lockedStorage = createSafeStorageMock("security-error");
-  let errorCaught = false;
-  try {
-    lockedStorage.setItem("test", "val");
-  } catch (err) {
-    errorCaught = err.message.includes("SecurityError");
-  }
-  assert.strictEqual(errorCaught, true);
-});
-
-test("V05", "Storage", "Idempotência da Biblioteca: duplicar clique não duplica obra na estante", () => {
-  let list = [];
-  const add = (item) => {
-    if (!list.some((e) => e.slug === item.slug)) {
-      list = [item, ...list];
-    }
-  };
-  add({ slug: "frieren", title: "Frieren" });
-  add({ slug: "frieren", title: "Frieren" });
-  add({ slug: "frieren", title: "Frieren" });
-  assert.strictEqual(list.length, 1);
-});
-
-test("V06", "Storage", "Limpeza de Histórico: ação 'Limpar histórico' esvazia lista completamente", () => {
-  const storage = createSafeStorageMock("normal");
-  storage.setItem("mangaflow-reading-history-v1", JSON.stringify([{ slug: "obra-1" }]));
-  assert.notStrictEqual(storage.getItem("mangaflow-reading-history-v1"), null);
-  storage.removeItem("mangaflow-reading-history-v1");
-  assert.strictEqual(storage.getItem("mangaflow-reading-history-v1"), null);
-});
+test(
+  "V06",
+  "Storage",
+  "Limpeza de Histórico: ação 'Limpar histórico' esvazia lista completamente",
+  () => {
+    const storage = createSafeStorageMock("normal");
+    storage.setItem("mangaflow-reading-history-v1", JSON.stringify([{ slug: "obra-1" }]));
+    assert.notStrictEqual(storage.getItem("mangaflow-reading-history-v1"), null);
+    storage.removeItem("mangaflow-reading-history-v1");
+    assert.strictEqual(storage.getItem("mangaflow-reading-history-v1"), null);
+  },
+);
 
 test("V07", "Storage", "Remoção Individual: remove apenas a obra desejada do histórico", () => {
   let list = [{ slug: "obra-a" }, { slug: "obra-b" }, { slug: "obra-c" }];
@@ -183,7 +212,10 @@ test("V07", "Storage", "Remoção Individual: remove apenas a obra desejada do h
   };
   remove("obra-b");
   assert.strictEqual(list.length, 2);
-  assert.strictEqual(list.some((item) => item.slug === "obra-b"), false);
+  assert.strictEqual(
+    list.some((item) => item.slug === "obra-b"),
+    false,
+  );
   assert.strictEqual(list[0].slug, "obra-a");
   assert.strictEqual(list[1].slug, "obra-c");
 });
@@ -194,13 +226,18 @@ test("V08", "Storage", "Filtro Adulto (+18): ativação via safeStorage persiste
   assert.strictEqual(storage.getItem("yae-adult-content"), "1");
 });
 
-test("V09", "Storage", "Filtro Adulto (+18): desativação remove ou anula a preferência e oculta obras", () => {
-  const storage = createSafeStorageMock("normal");
-  storage.setItem("yae-adult-content", "1");
-  storage.removeItem("yae-adult-content");
-  const isAdultEnabled = storage.getItem("yae-adult-content") === "1";
-  assert.strictEqual(isAdultEnabled, false);
-});
+test(
+  "V09",
+  "Storage",
+  "Filtro Adulto (+18): desativação remove ou anula a preferência e oculta obras",
+  () => {
+    const storage = createSafeStorageMock("normal");
+    storage.setItem("yae-adult-content", "1");
+    storage.removeItem("yae-adult-content");
+    const isAdultEnabled = storage.getItem("yae-adult-content") === "1";
+    assert.strictEqual(isAdultEnabled, false);
+  },
+);
 
 test("V10", "Storage", "Alternância de Tema: persistência de 'dark' vs 'light'", () => {
   const storage = createSafeStorageMock("normal");
@@ -216,12 +253,54 @@ test("V10", "Storage", "Alternância de Tema: persistência de 'dark' vs 'light'
 console.log(`\n${c.bold}${c.yellow}▶ SUITE 2: Descoberta, Busca & Filtros do Catálogo${c.reset}`);
 
 const mockCatalog = [
-  { slug: "solo-leveling", title: "Solo Leveling", kind: "manhwa", status: "Completo", rating: 4.9, ageRating: "14" },
-  { slug: "one-piece", title: "One Piece", kind: "manga", status: "Em andamento", rating: 4.8, ageRating: "14" },
-  { slug: "frieren", title: "Frieren e a Jornada", kind: "manga", status: "Em andamento", rating: 4.95, ageRating: "14" },
-  { slug: "overlord-ln", title: "Overlord Light Novel", kind: "light-novel", status: "Em andamento", rating: 4.6, ageRating: "14" },
-  { slug: "berserk", title: "Berserk", kind: "manga", status: "Hiato", rating: 4.98, ageRating: "18+" },
-  { slug: "jujutsu-kaisen", title: "Jujutsu Kaisen", kind: "manga", status: "Completo", rating: 4.7, ageRating: "14" },
+  {
+    slug: "solo-leveling",
+    title: "Solo Leveling",
+    kind: "manhwa",
+    status: "Completo",
+    rating: 4.9,
+    ageRating: "14",
+  },
+  {
+    slug: "one-piece",
+    title: "One Piece",
+    kind: "manga",
+    status: "Em andamento",
+    rating: 4.8,
+    ageRating: "14",
+  },
+  {
+    slug: "frieren",
+    title: "Frieren e a Jornada",
+    kind: "manga",
+    status: "Em andamento",
+    rating: 4.95,
+    ageRating: "14",
+  },
+  {
+    slug: "overlord-ln",
+    title: "Overlord Light Novel",
+    kind: "light-novel",
+    status: "Em andamento",
+    rating: 4.6,
+    ageRating: "14",
+  },
+  {
+    slug: "berserk",
+    title: "Berserk",
+    kind: "manga",
+    status: "Hiato",
+    rating: 4.98,
+    ageRating: "18+",
+  },
+  {
+    slug: "jujutsu-kaisen",
+    title: "Jujutsu Kaisen",
+    kind: "manga",
+    status: "Completo",
+    rating: 4.7,
+    ageRating: "14",
+  },
 ];
 
 test("V11", "Busca", "Busca por título exato: retorna a obra correspondente", () => {
@@ -238,19 +317,33 @@ test("V12", "Busca", "Busca parcial case-insensitive: 'piece' encontra 'One Piec
   assert.strictEqual(res[0].slug, "one-piece");
 });
 
-test("V13", "Busca", "Busca com acentos: 'frieren e a jornada' normalizada encontra com êxito", () => {
-  const normalize = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  const q = normalize("jornada");
-  const res = mockCatalog.filter((m) => normalize(m.title).includes(q));
-  assert.strictEqual(res.length, 1);
-  assert.strictEqual(res[0].slug, "frieren");
-});
+test(
+  "V13",
+  "Busca",
+  "Busca com acentos: 'frieren e a jornada' normalizada encontra com êxito",
+  () => {
+    const normalize = (str) =>
+      str
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+    const q = normalize("jornada");
+    const res = mockCatalog.filter((m) => normalize(m.title).includes(q));
+    assert.strictEqual(res.length, 1);
+    assert.strictEqual(res[0].slug, "frieren");
+  },
+);
 
-test("V14", "Busca", "Busca vazia ou apenas espaços: retorna lista zerada sem requisição errônea", () => {
-  const q = "   ".trim();
-  const res = q ? mockCatalog.filter((m) => m.title.toLowerCase().includes(q)) : [];
-  assert.strictEqual(res.length, 0);
-});
+test(
+  "V14",
+  "Busca",
+  "Busca vazia ou apenas espaços: retorna lista zerada sem requisição errônea",
+  () => {
+    const q = "   ".trim();
+    const res = q ? mockCatalog.filter((m) => m.title.toLowerCase().includes(q)) : [];
+    assert.strictEqual(res.length, 0);
+  },
+);
 
 test("V15", "Busca", "Paginação de busca: cálculo de limites corretos", () => {
   const page = 2;
@@ -263,7 +356,10 @@ test("V15", "Busca", "Paginação de busca: cálculo de limites corretos", () =>
 
 test("V16", "Filtros", "Filtro por formato 'manga': retorna apenas obras mangá", () => {
   const res = mockCatalog.filter((m) => m.kind === "manga");
-  assert.strictEqual(res.every((m) => m.kind === "manga"), true);
+  assert.strictEqual(
+    res.every((m) => m.kind === "manga"),
+    true,
+  );
   assert.strictEqual(res.length, 4);
 });
 
@@ -282,8 +378,14 @@ test("V18", "Filtros", "Filtro por formato 'light-novel': retorna light novels",
 test("V19", "Filtros", "Filtro por status 'Completo': filtra obras finalizadas", () => {
   const res = mockCatalog.filter((m) => m.status === "Completo");
   assert.strictEqual(res.length, 2);
-  assert.strictEqual(res.some((m) => m.slug === "solo-leveling"), true);
-  assert.strictEqual(res.some((m) => m.slug === "jujutsu-kaisen"), true);
+  assert.strictEqual(
+    res.some((m) => m.slug === "solo-leveling"),
+    true,
+  );
+  assert.strictEqual(
+    res.some((m) => m.slug === "jujutsu-kaisen"),
+    true,
+  );
 });
 
 test("V20", "Ordenação", "Ordenação por 'Melhor avaliados': ordem decrescente de nota", () => {
@@ -380,11 +482,16 @@ function createReaderEngine(totalPages = 20, initialMode = "vertical") {
   };
 }
 
-test("V23", "Leitor", "Modo Cascata Vertical: inicia na página 1 e preserva comportamento webtoon", () => {
-  const engine = createReaderEngine(20, "vertical");
-  assert.strictEqual(engine.mode, "vertical");
-  assert.strictEqual(engine.currentPage, 1);
-});
+test(
+  "V23",
+  "Leitor",
+  "Modo Cascata Vertical: inicia na página 1 e preserva comportamento webtoon",
+  () => {
+    const engine = createReaderEngine(20, "vertical");
+    assert.strictEqual(engine.mode, "vertical");
+    assert.strictEqual(engine.currentPage, 1);
+  },
+);
 
 test("V24", "Leitor", "Modo Paginado RTL (Mangá): alternância bem sucedida", () => {
   const engine = createReaderEngine(20, "vertical");
@@ -444,19 +551,29 @@ test("V31", "Leitor", "Toque lateral esquerdo no modo RTL: avança página", () 
   assert.strictEqual(engine.currentPage, 5);
 });
 
-test("V32", "Leitor", "Tentativa de voltar antes da pág. 1: aciona transição para capítulo anterior", () => {
-  const engine = createReaderEngine(20, "horizontal-rtl");
-  engine.currentPage = 1;
-  const action = engine.onKey("ArrowRight");
-  assert.strictEqual(action, "NAV_PREV_CHAPTER");
-});
+test(
+  "V32",
+  "Leitor",
+  "Tentativa de voltar antes da pág. 1: aciona transição para capítulo anterior",
+  () => {
+    const engine = createReaderEngine(20, "horizontal-rtl");
+    engine.currentPage = 1;
+    const action = engine.onKey("ArrowRight");
+    assert.strictEqual(action, "NAV_PREV_CHAPTER");
+  },
+);
 
-test("V33", "Leitor", "Tentativa de avançar após última pág.: aciona transição para próximo capítulo", () => {
-  const engine = createReaderEngine(20, "horizontal-rtl");
-  engine.currentPage = 20;
-  const action = engine.onKey("ArrowLeft");
-  assert.strictEqual(action, "NAV_NEXT_CHAPTER");
-});
+test(
+  "V33",
+  "Leitor",
+  "Tentativa de avançar após última pág.: aciona transição para próximo capítulo",
+  () => {
+    const engine = createReaderEngine(20, "horizontal-rtl");
+    engine.currentPage = 20;
+    const action = engine.onKey("ArrowLeft");
+    assert.strictEqual(action, "NAV_NEXT_CHAPTER");
+  },
+);
 
 test("V34", "Leitor", "Seletor rápido de capítulos: salto direto via ID de sibling", () => {
   const engine = createReaderEngine(20, "vertical");
@@ -536,15 +653,23 @@ test("V39", "Histórico", "Leitor na Pág. 18: histórico atualiza lastPage para
   assert.strictEqual(store.getSavedReadingPage("frieren", "ch-10"), 18);
 });
 
-test("V40", "Obra", "Página da obra: botão principal reconhece 'Continuar: Cap. 10 (Pág. 18)'", () => {
-  const history = [{ slug: "frieren", lastChapterId: "ch-10", lastChapterNumber: 10, lastPage: 18 }];
-  const obraSlug = "frieren";
-  const entry = history.find((h) => h.slug === obraSlug);
-  const label = entry && entry.lastPage > 1
-    ? `Continuar: Cap. ${entry.lastChapterNumber} (Pág. ${entry.lastPage})`
-    : `Ler capítulo 10`;
-  assert.strictEqual(label, "Continuar: Cap. 10 (Pág. 18)");
-});
+test(
+  "V40",
+  "Obra",
+  "Página da obra: botão principal reconhece 'Continuar: Cap. 10 (Pág. 18)'",
+  () => {
+    const history = [
+      { slug: "frieren", lastChapterId: "ch-10", lastChapterNumber: 10, lastPage: 18 },
+    ];
+    const obraSlug = "frieren";
+    const entry = history.find((h) => h.slug === obraSlug);
+    const label =
+      entry && entry.lastPage > 1
+        ? `Continuar: Cap. ${entry.lastChapterNumber} (Pág. ${entry.lastPage})`
+        : `Ler capítulo 10`;
+    assert.strictEqual(label, "Continuar: Cap. 10 (Pág. 18)");
+  },
+);
 
 test("V41", "Leitor", "Restauração de página: o leitor reabre na pág. 18 gravada", () => {
   const store = createReadingHistoryStore();
@@ -553,15 +678,20 @@ test("V41", "Leitor", "Restauração de página: o leitor reabre na pág. 18 gra
   assert.strictEqual(restored, 18);
 });
 
-test("V42", "Histórico", "Conclusão de capítulo: ao mudar de capítulo, histórico atualiza chapterId e zera lastPage", () => {
-  const store = createReadingHistoryStore();
-  store.rememberReading({ slug: "frieren", title: "Frieren" }, "ch-10", 10, 25);
-  // Muda para o cap 11
-  store.rememberReading({ slug: "frieren", title: "Frieren" }, "ch-11", 11, 1);
-  const current = store.getList()[0];
-  assert.strictEqual(current.lastChapterId, "ch-11");
-  assert.strictEqual(current.lastPage, 1);
-});
+test(
+  "V42",
+  "Histórico",
+  "Conclusão de capítulo: ao mudar de capítulo, histórico atualiza chapterId e zera lastPage",
+  () => {
+    const store = createReadingHistoryStore();
+    store.rememberReading({ slug: "frieren", title: "Frieren" }, "ch-10", 10, 25);
+    // Muda para o cap 11
+    store.rememberReading({ slug: "frieren", title: "Frieren" }, "ch-11", 11, 1);
+    const current = store.getList()[0];
+    assert.strictEqual(current.lastChapterId, "ch-11");
+    assert.strictEqual(current.lastPage, 1);
+  },
+);
 
 test("V43", "Histórico", "Limite LRU: histórico mantém no máximo 12 obras mais recentes", () => {
   const store = createReadingHistoryStore();
@@ -572,20 +702,25 @@ test("V43", "Histórico", "Limite LRU: histórico mantém no máximo 12 obras ma
   assert.strictEqual(store.getList()[0].slug, "obra-20");
 });
 
-test("V44", "Obra", "Marcação visual no sumário: capítulos lidos exibem indicador de conclusão", () => {
-  const historyEntry = { slug: "frieren", lastChapterId: "ch-5", lastChapterNumber: 5 };
-  const chapters = [
-    { id: "ch-6", number: 6 },
-    { id: "ch-5", number: 5 },
-    { id: "ch-4", number: 4 },
-    { id: "ch-3", number: 3 },
-  ];
-  const isRead = (ch) => ch.number <= historyEntry.lastChapterNumber;
-  assert.strictEqual(isRead(chapters[0]), false); // ch 6 não lido
-  assert.strictEqual(isRead(chapters[1]), true);  // ch 5 lido
-  assert.strictEqual(isRead(chapters[2]), true);  // ch 4 lido
-  assert.strictEqual(isRead(chapters[3]), true);  // ch 3 lido
-});
+test(
+  "V44",
+  "Obra",
+  "Marcação visual no sumário: capítulos lidos exibem indicador de conclusão",
+  () => {
+    const historyEntry = { slug: "frieren", lastChapterId: "ch-5", lastChapterNumber: 5 };
+    const chapters = [
+      { id: "ch-6", number: 6 },
+      { id: "ch-5", number: 5 },
+      { id: "ch-4", number: 4 },
+      { id: "ch-3", number: 3 },
+    ];
+    const isRead = (ch) => ch.number <= historyEntry.lastChapterNumber;
+    assert.strictEqual(isRead(chapters[0]), false); // ch 6 não lido
+    assert.strictEqual(isRead(chapters[1]), true); // ch 5 lido
+    assert.strictEqual(isRead(chapters[2]), true); // ch 4 lido
+    assert.strictEqual(isRead(chapters[3]), true); // ch 3 lido
+  },
+);
 
 test("V45", "Obra", "Obra não lida: botão principal mostra 'Ler capítulo X' sem página", () => {
   const history = [];
@@ -594,15 +729,20 @@ test("V45", "Obra", "Obra não lida: botão principal mostra 'Ler capítulo X' s
   assert.strictEqual(label, "Ler capítulo 1");
 });
 
-test("V46", "Leitor", "Gatilho de pré-carregamento: dispara quando currentPage >= totalPages - 2", () => {
-  const totalPages = 20;
-  const shouldPreload = (page) => page >= totalPages - 2;
-  assert.strictEqual(shouldPreload(15), false);
-  assert.strictEqual(shouldPreload(17), false);
-  assert.strictEqual(shouldPreload(18), true);
-  assert.strictEqual(shouldPreload(19), true);
-  assert.strictEqual(shouldPreload(20), true);
-});
+test(
+  "V46",
+  "Leitor",
+  "Gatilho de pré-carregamento: dispara quando currentPage >= totalPages - 2",
+  () => {
+    const totalPages = 20;
+    const shouldPreload = (page) => page >= totalPages - 2;
+    assert.strictEqual(shouldPreload(15), false);
+    assert.strictEqual(shouldPreload(17), false);
+    assert.strictEqual(shouldPreload(18), true);
+    assert.strictEqual(shouldPreload(19), true);
+    assert.strictEqual(shouldPreload(20), true);
+  },
+);
 
 test("V47", "Histórico", "Idempotência de updateReadingPage: não grava se página não mudou", () => {
   const store = createReadingHistoryStore();
@@ -664,12 +804,17 @@ test("V53", "SEO", "Rota adulta restringe indexação via robots: noindex, follo
   assert.ok(adultosCode.includes("noindex"));
 });
 
-test("V54", "Acessibilidade", "Sistema de cores possui contraste para tema claro definido em styles.css", () => {
-  const stylesCode = fs.readFileSync(stylesPath, "utf-8");
-  assert.ok(stylesCode.includes(":root:not(.dark)"));
-  assert.ok(stylesCode.includes("--primary: oklch(0.55 0.22 350)"));
-  assert.ok(stylesCode.includes("--primary-foreground: oklch(0.99 0.01 320)"));
-});
+test(
+  "V54",
+  "Acessibilidade",
+  "Sistema de cores possui contraste para tema claro definido em styles.css",
+  () => {
+    const stylesCode = fs.readFileSync(stylesPath, "utf-8");
+    assert.ok(stylesCode.includes(":root:not(.dark)"));
+    assert.ok(stylesCode.includes("--primary: oklch(0.55 0.22 350)"));
+    assert.ok(stylesCode.includes("--primary-foreground: oklch(0.99 0.01 320)"));
+  },
+);
 
 test("V55", "SEO", "Viewport responsivo padronizado presente em __root.tsx", () => {
   const rootCode = fs.readFileSync(rootRoutePath, "utf-8");
@@ -679,23 +824,33 @@ test("V55", "SEO", "Viewport responsivo padronizado presente em __root.tsx", () 
 // ===========================================================================
 // SUITE 6: RESILIÊNCIA DE REDE, FALLBACKS & TRATAMENTO DE ERROS (10 Variações)
 // ===========================================================================
-console.log(`\n${c.bold}${c.yellow}▶ SUITE 6: Resiliência de Rede, Fallbacks & Tratamento de Erros${c.reset}`);
+console.log(
+  `\n${c.bold}${c.yellow}▶ SUITE 6: Resiliência de Rede, Fallbacks & Tratamento de Erros${c.reset}`,
+);
 
 test("V56", "Rede", "Timeout automático via AbortSignal.timeout(12000)", () => {
-  const signal = typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
-    ? AbortSignal.timeout(12000)
-    : new AbortController().signal;
+  const signal =
+    typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
+      ? AbortSignal.timeout(12000)
+      : new AbortController().signal;
   assert.strictEqual(typeof signal.aborted, "boolean");
 });
 
-test("V57", "Fallback", "Capa corrompida / 404: estado coverError aciona placeholder com ícone e título", () => {
-  let coverError = false;
-  const onImageError = () => { coverError = true; };
-  onImageError();
-  assert.strictEqual(coverError, true);
-  const renderFallback = coverError ? "PLACEHOLDER_BOOK_OPEN" : "IMG_TAG";
-  assert.strictEqual(renderFallback, "PLACEHOLDER_BOOK_OPEN");
-});
+test(
+  "V57",
+  "Fallback",
+  "Capa corrompida / 404: estado coverError aciona placeholder com ícone e título",
+  () => {
+    let coverError = false;
+    const onImageError = () => {
+      coverError = true;
+    };
+    onImageError();
+    assert.strictEqual(coverError, true);
+    const renderFallback = coverError ? "PLACEHOLDER_BOOK_OPEN" : "IMG_TAG";
+    assert.strictEqual(renderFallback, "PLACEHOLDER_BOOK_OPEN");
+  },
+);
 
 test("V58", "Leitor", "Recuperação de imagem que falhou: remoção de índice do failedImages", () => {
   let failedImages = [2, 5, 8];
@@ -707,11 +862,16 @@ test("V58", "Leitor", "Recuperação de imagem que falhou: remoção de índice 
   assert.strictEqual(failedImages.includes(5), false);
 });
 
-test("V59", "Leitor", "Capítulo com zero páginas: exibe placeholder informativo sem erro de runtime", () => {
-  const pages = [];
-  const state = pages.length === 0 ? "EMPTY_PAGES_PLACEHOLDER" : "RENDER_PAGES";
-  assert.strictEqual(state, "EMPTY_PAGES_PLACEHOLDER");
-});
+test(
+  "V59",
+  "Leitor",
+  "Capítulo com zero páginas: exibe placeholder informativo sem erro de runtime",
+  () => {
+    const pages = [];
+    const state = pages.length === 0 ? "EMPTY_PAGES_PLACEHOLDER" : "RENDER_PAGES";
+    assert.strictEqual(state, "EMPTY_PAGES_PLACEHOLDER");
+  },
+);
 
 test("V60", "Leitor", "Erro de rede no capítulo: exibe estado com botão 'Tentar novamente'", () => {
   const error = "Falha ao conectar com o servidor";
@@ -731,55 +891,80 @@ test("V62", "Catálogo", "Busca sem resultados: exibe ProductState('no-results')
   assert.strictEqual(state, "no-results");
 });
 
-test("V63", "Obra", "Compartilhamento: suporte a navigator.share com fallback para clipboard", () => {
-  let shareCalled = false;
-  let clipCalled = false;
-  const mockNavigator = {
-    share: async () => { shareCalled = true; },
-    clipboard: { writeText: async () => { clipCalled = true; } },
-  };
+test(
+  "V63",
+  "Obra",
+  "Compartilhamento: suporte a navigator.share com fallback para clipboard",
+  () => {
+    let shareCalled = false;
+    let clipCalled = false;
+    const mockNavigator = {
+      share: async () => {
+        shareCalled = true;
+      },
+      clipboard: {
+        writeText: async () => {
+          clipCalled = true;
+        },
+      },
+    };
 
-  async function shareWork() {
-    if (mockNavigator.share) await mockNavigator.share();
-    else if (mockNavigator.clipboard) await mockNavigator.clipboard.writeText();
-  }
+    async function shareWork() {
+      if (mockNavigator.share) await mockNavigator.share();
+      else if (mockNavigator.clipboard) await mockNavigator.clipboard.writeText();
+    }
 
-  shareWork();
-  assert.strictEqual(shareCalled, true);
-});
+    shareWork();
+    assert.strictEqual(shareCalled, true);
+  },
+);
 
-test("V64", "TypeScript", "exactOptionalPropertyTypes: objeto RequestInit não recebe propriedades 'undefined'", () => {
-  const init = { headers: { accept: "application/json" } };
-  const hasTimeout = true;
-  if (hasTimeout) {
-    init.signal = AbortSignal.timeout(12000);
-  }
-  assert.ok("headers" in init);
-  assert.ok("signal" in init);
-  assert.notStrictEqual(init.signal, undefined);
-});
+test(
+  "V64",
+  "TypeScript",
+  "exactOptionalPropertyTypes: objeto RequestInit não recebe propriedades 'undefined'",
+  () => {
+    const init = { headers: { accept: "application/json" } };
+    const hasTimeout = true;
+    if (hasTimeout) {
+      init.signal = AbortSignal.timeout(12000);
+    }
+    assert.ok("headers" in init);
+    assert.ok("signal" in init);
+    assert.notStrictEqual(init.signal, undefined);
+  },
+);
 
-test("V65", "Ciclo de Vida", "Cancelamento via flag 'active': previne atualizações de estado em unmount", () => {
-  let active = true;
-  let state = "initial";
+test(
+  "V65",
+  "Ciclo de Vida",
+  "Cancelamento via flag 'active': previne atualizações de estado em unmount",
+  () => {
+    let active = true;
+    let state = "initial";
 
-  const unmount = () => { active = false; };
+    const unmount = () => {
+      active = false;
+    };
 
-  async function asyncLoad() {
-    await Promise.resolve();
-    if (!active) return;
-    state = "updated";
-  }
+    async function asyncLoad() {
+      await Promise.resolve();
+      if (!active) return;
+      state = "updated";
+    }
 
-  unmount();
-  asyncLoad();
-  assert.strictEqual(state, "initial"); // State não foi mutado após desmonte
-});
+    unmount();
+    asyncLoad();
+    assert.strictEqual(state, "initial"); // State não foi mutado após desmonte
+  },
+);
 
 // ===========================================================================
 // SUITE 7: OTIMIZAÇÃO MOBILE, PERFORMANCE & SERVICE WORKER (3 Variações)
 // ===========================================================================
-console.log(`\n${c.bold}${c.yellow}▶ SUITE 7: Otimização Mobile, Performance & PWA Offline${c.reset}`);
+console.log(
+  `\n${c.bold}${c.yellow}▶ SUITE 7: Otimização Mobile, Performance & PWA Offline${c.reset}`,
+);
 
 test("V66", "PWA & Cache", "Service Worker mantém cache limitado aos assets estáticos", () => {
   const swPath = path.join(rootPath, "public", "sw.js");
@@ -789,35 +974,62 @@ test("V66", "PWA & Cache", "Service Worker mantém cache limitado aos assets est
   assert.ok(swCode.includes("caches.open"), "Deve manipular API de caches");
 });
 
-test("V67", "GPU & CSS", "Aceleração gráfica de GPU aplicada em menus e content-visibility em listas", () => {
-  const cssCode = fs.readFileSync(stylesPath, "utf-8");
-  assert.ok(cssCode.includes("will-change: transform;"), "Deve conter will-change");
-  assert.ok(cssCode.includes("transform: translateZ(0);"), "Deve conter aceleração translateZ");
-  assert.ok(cssCode.includes("content-visibility: auto;"), "Deve conter content-visibility");
-});
+test(
+  "V67",
+  "GPU & CSS",
+  "Aceleração gráfica de GPU aplicada em menus e content-visibility em listas",
+  () => {
+    const cssCode = fs.readFileSync(stylesPath, "utf-8");
+    assert.ok(cssCode.includes("will-change: transform;"), "Deve conter will-change");
+    assert.ok(cssCode.includes("transform: translateZ(0);"), "Deve conter aceleração translateZ");
+    assert.ok(cssCode.includes("content-visibility: auto;"), "Deve conter content-visibility");
+  },
+);
 
-test("V68", "DOM & Leitor", "Leitor mantém imagens com carregamento e decodificação assíncronos", () => {
-  const readerRoutePath = path.join(rootPath, "src", "routes", "ler.$slug.$chapter.tsx");
-  const readerCode = fs.readFileSync(readerRoutePath, "utf-8");
-  assert.ok(readerCode.includes("pageHeights"), "Deve armazenar alturas para estabilidade de scroll");
-  assert.ok(readerCode.includes('decoding="async"'), "Deve incluir decodificação assíncrona de fotos");
-  assert.ok(readerCode.includes('loading={page.index < 2 ? "eager" : "lazy"}'), "Deve carregar imagens sob demanda");
-});
+test(
+  "V68",
+  "DOM & Leitor",
+  "Leitor mantém imagens com carregamento e decodificação assíncronos",
+  () => {
+    const readerRoutePath = path.join(rootPath, "src", "routes", "ler.$slug.$chapter.tsx");
+    const readerCode = fs.readFileSync(readerRoutePath, "utf-8");
+    assert.ok(
+      readerCode.includes("pageHeights"),
+      "Deve armazenar alturas para estabilidade de scroll",
+    );
+    assert.ok(
+      readerCode.includes('decoding="async"'),
+      "Deve incluir decodificação assíncrona de fotos",
+    );
+    assert.ok(
+      readerCode.includes('loading={page.index < 2 ? "eager" : "lazy"}'),
+      "Deve carregar imagens sob demanda",
+    );
+  },
+);
 
 test("V69", "Onboarding", "Onboarding permite salvar e persistir preferências de catálogo", () => {
   const onboardingPath = path.join(rootPath, "src", "routes", "onboarding.tsx");
   const code = fs.readFileSync(onboardingPath, "utf-8");
-  assert.ok(code.includes("yae-onboarding-prefs"), "Deve definir chave de armazenamento de onboarding");
+  assert.ok(
+    code.includes("yae-onboarding-prefs"),
+    "Deve definir chave de armazenamento de onboarding",
+  );
   assert.ok(code.includes("safeStorage.setItem"), "Deve persistir preferências com safeStorage");
 });
 
-test("V70", "Configurações", "Configurações expõe e sincroniza opções de leitura e perfil real", () => {
-  const accountPath = path.join(rootPath, "src", "components", "account-page.tsx");
-  const code = fs.readFileSync(accountPath, "utf-8");
-  assert.ok(code.includes("mangaflow-reader-preferences"), "Deve sincronizar chave de leitura");
-  assert.ok(code.includes("Obras salvas"), "Deve expor contagem de obras salvas");
-  assert.ok(code.includes("Capítulos lidos"), "Deve expor contagem de capítulos lidos");
-});
+test(
+  "V70",
+  "Configurações",
+  "Configurações expõe e sincroniza opções de leitura e perfil real",
+  () => {
+    const accountPath = path.join(rootPath, "src", "components", "account-page.tsx");
+    const code = fs.readFileSync(accountPath, "utf-8");
+    assert.ok(code.includes("mangaflow-reader-preferences"), "Deve sincronizar chave de leitura");
+    assert.ok(code.includes("Obras salvas"), "Deve expor contagem de obras salvas");
+    assert.ok(code.includes("Capítulos lidos"), "Deve expor contagem de capítulos lidos");
+  },
+);
 
 test("V71", "Tema & Performance", "Root shell inclui script em linha anti-FOUC para tema", () => {
   const rootComponentPath = path.join(rootPath, "src", "routes", "__root.tsx");
@@ -826,18 +1038,34 @@ test("V71", "Tema & Performance", "Root shell inclui script em linha anti-FOUC p
   assert.ok(code.includes("dangerouslySetInnerHTML"), "Deve injetar script síncrono no head");
 });
 
-test("V72", "Header & UX", "Sino de notificações não exibe badge falso quando não há novos alertas", () => {
-  const headerPath = path.join(rootPath, "src", "components", "site-header.tsx");
-  const code = fs.readFileSync(headerPath, "utf-8");
-  assert.ok(!code.includes('span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary"'), "Não deve ter badge vermelho estático");
-});
+test(
+  "V72",
+  "Header & UX",
+  "Sino de notificações não exibe badge falso quando não há novos alertas",
+  () => {
+    const headerPath = path.join(rootPath, "src", "components", "site-header.tsx");
+    const code = fs.readFileSync(headerPath, "utf-8");
+    assert.ok(
+      !code.includes('span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary"'),
+      "Não deve ter badge vermelho estático",
+    );
+  },
+);
 
-test("V73", "SSR & Resiliência", "Estado de offline inicializa como falso para não gerar banner espúrio no SSR", () => {
-  const rootPathFile = path.join(rootPath, "src", "routes", "__root.tsx");
-  const code = fs.readFileSync(rootPathFile, "utf-8");
-  assert.ok(code.includes("useState(false)"), "isOffline deve iniciar como false no servidor");
-  assert.ok(code.includes('typeof window === "undefined"'), "Deve proteger execução de listeners apenas para cliente");
-});
+test(
+  "V73",
+  "SSR & Resiliência",
+  "Estado de offline inicializa como falso para não gerar banner espúrio no SSR",
+  () => {
+    const rootPathFile = path.join(rootPath, "src", "routes", "__root.tsx");
+    const code = fs.readFileSync(rootPathFile, "utf-8");
+    assert.ok(code.includes("useState(false)"), "isOffline deve iniciar como false no servidor");
+    assert.ok(
+      code.includes('typeof window === "undefined"'),
+      "Deve proteger execução de listeners apenas para cliente",
+    );
+  },
+);
 
 // ===========================================================================
 // RELATÓRIO FINAL
@@ -848,14 +1076,20 @@ console.log(`${c.bold}📊 RELATÓRIO FINAL DA BATERIA DE TESTES DE PRODUÇÃO${
 console.log(`═══════════════════════════════════════════════════════════════`);
 console.log(`  Total de Variações Executadas: ${c.bold}${passedCount + failedCount}${c.reset}`);
 console.log(`  Variações Aprovadas:           ${c.green}${c.bold}${passedCount} ✔${c.reset}`);
-console.log(`  Variações com Falha:           ${failedCount > 0 ? c.red : c.green}${c.bold}${failedCount} ✖${c.reset}`);
+console.log(
+  `  Variações com Falha:           ${failedCount > 0 ? c.red : c.green}${c.bold}${failedCount} ✖${c.reset}`,
+);
 console.log(`  Tempo de Execução:             ${c.cyan}${durationMs}ms${c.reset}`);
 console.log(`═══════════════════════════════════════════════════════════════\n`);
 
 if (failedCount > 0) {
-  console.error(`${c.red}${c.bold}🚨 A BATERIA FALHOU! Corrija os problemas antes de prosseguir.${c.reset}\n`);
+  console.error(
+    `${c.red}${c.bold}🚨 A BATERIA FALHOU! Corrija os problemas antes de prosseguir.${c.reset}\n`,
+  );
   process.exit(1);
 } else {
-  console.log(`${c.green}${c.bold}🎉 TODAS AS ${passedCount} VARIAÇÕES FORAM APROVADAS COM SUCESSO!${c.reset}\n`);
+  console.log(
+    `${c.green}${c.bold}🎉 TODAS AS ${passedCount} VARIAÇÕES FORAM APROVADAS COM SUCESSO!${c.reset}\n`,
+  );
   process.exit(0);
 }

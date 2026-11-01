@@ -107,7 +107,8 @@ function SearchPage() {
             <Search className="h-7 w-7 text-primary" />
             <h2>O que você deseja ler hoje?</h2>
             <p>
-              Digite o título de uma obra, gênero, autor ou palavra-chave para buscar em todo o catálogo.
+              Digite o título de uma obra, gênero, autor ou palavra-chave para buscar em todo o
+              catálogo.
             </p>
           </div>
         ) : results.length ? (

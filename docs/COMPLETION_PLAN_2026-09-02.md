@@ -525,15 +525,15 @@ Criterios de aceite:
 
 ## Riscos e controles
 
-| Risco | Controle |
-| --- | --- |
-| Estourar Always Free | nao criar recursos, medir disco/egress, cache controlado |
-| Expor segredo | nunca commitar `.env`, token, rclone, cookie ou dump |
-| Fonte externa instavel | cache, backoff, circuit breaker e fallback |
-| Catalogo inflado sem leitura | separar `legivel`, `link oficial` e `metadata-only` |
-| Admin aberto demais | remover cadastro, allowlist e papel admin server-side |
-| Deploy errado pela topologia dividida | script idempotente e checklist por componente |
-| Perder historico Lovable | sem force push, rebase, amend ou squash publicado |
+| Risco                                 | Controle                                                 |
+| ------------------------------------- | -------------------------------------------------------- |
+| Estourar Always Free                  | nao criar recursos, medir disco/egress, cache controlado |
+| Expor segredo                         | nunca commitar `.env`, token, rclone, cookie ou dump     |
+| Fonte externa instavel                | cache, backoff, circuit breaker e fallback               |
+| Catalogo inflado sem leitura          | separar `legivel`, `link oficial` e `metadata-only`      |
+| Admin aberto demais                   | remover cadastro, allowlist e papel admin server-side    |
+| Deploy errado pela topologia dividida | script idempotente e checklist por componente            |
+| Perder historico Lovable              | sem force push, rebase, amend ou squash publicado        |
 
 ## Referencias tecnicas consultadas
 

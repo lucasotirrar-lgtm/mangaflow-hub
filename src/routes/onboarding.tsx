@@ -30,9 +30,7 @@ function Onboarding() {
   const [faixa, setFaixa] = useState("livre");
 
   const toggleFormato = (f: string) =>
-    setFormatos((prev) =>
-      prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f],
-    );
+    setFormatos((prev) => (prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f]));
 
   const finish = () => {
     const prefs: Prefs = { formatos, fonte, faixaEtaria: faixa };
@@ -51,7 +49,9 @@ function Onboarding() {
 
         {/* Formatos */}
         <div className="mt-8">
-          <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">Formatos</h2>
+          <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            Formatos
+          </h2>
           <div className="grid gap-3 sm:grid-cols-3">
             {[
               { id: "manga", label: "Mangá", desc: "Quadrinhos japoneses" },
@@ -81,11 +81,17 @@ function Onboarding() {
 
         {/* Fonte */}
         <div className="mt-6">
-          <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">Fonte preferida</h2>
+          <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            Fonte preferida
+          </h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {[
               { id: "local", label: "Local primeiro", desc: "Servidor próprio, mais rápido" },
-              { id: "fallback", label: "Com fallback", desc: "Usa fonte alternativa se necessário" },
+              {
+                id: "fallback",
+                label: "Com fallback",
+                desc: "Usa fonte alternativa se necessário",
+              },
             ].map(({ id, label, desc }) => (
               <button
                 key={id}
@@ -97,9 +103,7 @@ function Onboarding() {
                     : "border-border bg-surface hover:border-primary/50"
                 }`}
               >
-                {fonte === id && (
-                  <Check className="absolute right-3 top-3 h-4 w-4 text-primary" />
-                )}
+                {fonte === id && <Check className="absolute right-3 top-3 h-4 w-4 text-primary" />}
                 <Database className="h-6 w-6 text-primary" />
                 <strong className="mt-5 block">{label}</strong>
                 <span className="mt-1 block text-xs text-muted-foreground">{desc}</span>
@@ -110,7 +114,9 @@ function Onboarding() {
 
         {/* Faixa Etária */}
         <div className="mt-6">
-          <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">Faixa etária</h2>
+          <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            Faixa etária
+          </h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {[
               { id: "livre", label: "Livre", desc: "Oculta conteúdo adulto (+18)" },
@@ -126,9 +132,7 @@ function Onboarding() {
                     : "border-border bg-surface hover:border-primary/50"
                 }`}
               >
-                {faixa === id && (
-                  <Check className="absolute right-3 top-3 h-4 w-4 text-primary" />
-                )}
+                {faixa === id && <Check className="absolute right-3 top-3 h-4 w-4 text-primary" />}
                 <ShieldCheck className="h-6 w-6 text-primary" />
                 <strong className="mt-5 block">{label}</strong>
                 <span className="mt-1 block text-xs text-muted-foreground">{desc}</span>

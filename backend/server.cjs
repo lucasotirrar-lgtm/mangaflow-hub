@@ -6,6 +6,12 @@ const path = require("node:path");
 const express = require("express");
 const { all, dataDir, get, initialize, run } = require("./database.cjs");
 const { fetchMangaDex } = require("./mangadex-client.cjs");
+const { createManifestLoader } = require("./chapter-manifest.cjs");
+const {
+  getProvider,
+  matchWorkWithProvider,
+  syncChaptersFromProvider,
+} = require("./providers/index.cjs");
 
 const app = express();
 const port = Number(process.env.PORT || 3100);
@@ -24,6 +30,9 @@ const allowedHosts = new Set([
   "s4.anilist.co",
   "api.mangadex.org",
   "cdn.readdetectiveconan.com",
+  "meo.comick.pictures",
+  "meo2.comick.pictures",
+  "meo3.comick.pictures",
 ]);
 const inFlightJobs = new Map();
 const inFlightAssets = new Map();
@@ -31,7 +40,11 @@ const inFlightAssets = new Map();
 app.disable("x-powered-by");
 app.use((req, res, next) => {
   const origin = req.get("origin") || "";
-  if (/^https:\/\/[^/]+\.vercel\.app$/i.test(origin) || origin === "https://manga.vexclaud.site") {
+  if (
+    /^https:\/\/[^/]+\.vercel\.app$/i.test(origin) ||
+    origin === "https://manga.vexclaud.site" ||
+    origin === "https://yae.vexclaud.site"
+  ) {
     res.set("Access-Control-Allow-Origin", origin);
     res.set("Vary", "Origin");
   }
@@ -128,8 +141,10 @@ function isAllowedSource(url) {
   try {
     const value = new URL(url);
     return (
-      value.protocol === "https:" &&
-      (allowedHosts.has(value.hostname) || value.hostname.endsWith(".mangadex.network"))
+      (value.protocol === "https:" || value.protocol === "http:") &&
+      (allowedHosts.has(value.hostname) ||
+        value.hostname.endsWith(".mangadex.network") ||
+        value.hostname.endsWith(".comick.pictures"))
     );
   } catch {
     return false;
@@ -565,13 +580,15 @@ async function syncChapters(work, stats = { requests: 0 }) {
   return { chapters, fetchedCount, changed };
 }
 
-async function pageUrls(chapter) {
-  const response = await fetchMangaDex(`/at-home/server/${chapter.external_id}`);
-  const payload = await response.json();
-  if (payload.result !== "ok") throw new Error("MangaDex não disponibilizou este capítulo");
-  return (payload.chapter.data || []).map(
-    (name) => `${payload.baseUrl}/data/${payload.chapter.hash}/${name}`,
-  );
+const pageUrls = createManifestLoader(fetchMangaDex);
+
+async function resolveChapterPageUrls(chapter) {
+  if (!chapter.source || chapter.source === "mangadex") {
+    return pageUrls(chapter);
+  }
+  const provider = getProvider(chapter.source);
+  if (!provider) throw new Error(`Provedor '${chapter.source}' não suportado`);
+  return provider.resolvePages(chapter);
 }
 
 function serializeWork(work) {
@@ -862,19 +879,20 @@ function serializeChapter(chapter) {
     language: "Português (BR)",
     releasedAt: chapter.published_at || "",
     scanlationGroup: chapter.scanlation_group,
+    source: chapter.source || "mangadex",
   };
 }
 
 function groupChapterReleases(rows) {
   const groups = new Map();
   for (const chapter of rows) {
-    const key = chapter.chapter_number
-      ? `${chapter.volume_number || ""}:${chapter.chapter_number}`
-      : chapter.external_id;
+    const num = chapter.normalized_number || chapter.chapter_number;
+    const key = num ? `${chapter.volume_number || ""}:${num}` : chapter.external_id;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(chapter);
   }
   return [...groups.values()].map((releases) => {
+    releases.sort((a, b) => (a.source === "mangadex" ? -1 : b.source === "mangadex" ? 1 : 0));
     const [primary, ...alternatives] = releases;
     return {
       ...serializeChapter(primary),
@@ -1061,7 +1079,25 @@ app.get("/api/v1/chapters/:chapterId/pages", async (req, res, next) => {
   try {
     const chapter = await get("SELECT * FROM chapters WHERE id = ?", [req.params.chapterId]);
     if (!chapter) return res.status(404).json({ error: "Capítulo não encontrado" });
-    const urls = await pageUrls(chapter);
+    const cached = await all(
+      "SELECT page_index, internal_path FROM assets WHERE chapter_id = ? AND asset_kind = 'chapter_page' AND status = 'available' ORDER BY page_index",
+      [chapter.id],
+    );
+    if (
+      chapter.page_count > 0 &&
+      cached.length === chapter.page_count &&
+      cached.every(
+        (asset, index) =>
+          asset.page_index === index && asset.internal_path && fs.existsSync(asset.internal_path),
+      )
+    )
+      return res.json({
+        pages: cached.map((asset) => ({
+          index: asset.page_index,
+          url: `/api/v1/media/chapter/${chapter.id}/${asset.page_index}`,
+        })),
+      });
+    const urls = await resolveChapterPageUrls(chapter);
     await run("UPDATE chapters SET page_count = ?, updated_at=CURRENT_TIMESTAMP WHERE id = ?", [
       urls.length,
       chapter.id,
@@ -1109,7 +1145,7 @@ app.get("/api/v1/media/chapter/:chapterId/:index", async (req, res, next) => {
     );
     if (existing?.status === "available" && fs.existsSync(existing.internal_path))
       return serveAsset(existing, res);
-    const urls = await pageUrls(chapter);
+    const urls = await resolveChapterPageUrls(chapter);
     if (!urls[index]) return res.status(404).end();
     const asset = await storeAsset({
       chapterId: chapter.id,
@@ -1225,6 +1261,116 @@ app.post("/api/v1/admin/sync-chapters", async (req, res, next) => {
       return res.status(401).json({ error: "Não autorizado" });
     const limit = Math.min(Math.max(Number(req.query.limit) || 100, 1), 100);
     res.json(await syncChaptersBatch(limit));
+  } catch (error) {
+    next(error);
+  }
+});
+
+async function syncProviderBackfillBatchUnsafe(limit = 10, providerName = "comick") {
+  const provider = getProvider(providerName);
+  if (!provider) throw new Error(`Provedor desconhecido: ${providerName}`);
+
+  const candidates = await all(
+    `SELECT w.id, w.title, w.slug, w.alternative_title, w.year, w.status,
+            COUNT(c.id) AS chapter_count
+     FROM works w
+     LEFT JOIN chapters c ON c.work_id = w.id AND c.language = 'pt-BR'
+     LEFT JOIN provider_work_sync_state pss ON pss.work_id = w.id AND pss.provider = ?
+     WHERE (pss.next_check_at IS NULL OR pss.next_check_at <= CURRENT_TIMESTAMP)
+     GROUP BY w.id
+     HAVING chapter_count < 5
+     ORDER BY chapter_count ASC, w.updated_at DESC
+     LIMIT ?`,
+    [providerName, limit],
+  );
+
+  if (candidates.length === 0) {
+    return { processed: 0, matched: 0, imported: 0, message: "Nenhuma obra pendente de backfill" };
+  }
+
+  const runId = nowId();
+  await run(
+    "INSERT INTO sync_runs (id, status, provider, job_type) VALUES (?, 'running', ?, 'provider_backfill')",
+    [runId, providerName],
+  );
+
+  let matchedCount = 0;
+  let importedCount = 0;
+  const results = [];
+
+  for (const work of candidates) {
+    try {
+      const mapping = await matchWorkWithProvider(work, providerName);
+      if (mapping && mapping.status === "approved") {
+        matchedCount += 1;
+        const syncResult = await syncChaptersFromProvider(work, providerName);
+        importedCount += syncResult.imported;
+        results.push({
+          workId: work.id,
+          title: work.title,
+          status: "matched_and_synced",
+          imported: syncResult.imported,
+          skipped: syncResult.skipped,
+        });
+      } else if (mapping && mapping.status === "candidate") {
+        results.push({
+          workId: work.id,
+          title: work.title,
+          status: "quarantined",
+          confidence: mapping.match_confidence,
+        });
+      } else {
+        await run(
+          `INSERT INTO provider_work_sync_state(work_id, provider, last_checked_at, next_check_at, last_status)
+           VALUES (?, ?, CURRENT_TIMESTAMP, datetime('now', '+7 days'), 'no_match')
+           ON CONFLICT(work_id, provider) DO UPDATE SET
+             last_checked_at = CURRENT_TIMESTAMP,
+             next_check_at = datetime('now', '+7 days'),
+             last_status = 'no_match',
+             updated_at = CURRENT_TIMESTAMP`,
+          [work.id, providerName],
+        );
+        results.push({ workId: work.id, title: work.title, status: "no_match" });
+      }
+    } catch (err) {
+      console.error(`[backfill:${providerName}] Erro na obra ${work.title}:`, err.message);
+      results.push({ workId: work.id, title: work.title, error: err.message });
+      if (err.status === 503 || err.isCloudflare) break;
+    }
+  }
+
+  await run(
+    "UPDATE sync_runs SET status = 'succeeded', imported_count = ?, finished_at = CURRENT_TIMESTAMP WHERE id = ?",
+    [importedCount, runId],
+  );
+
+  return {
+    processed: results.length,
+    matched: matchedCount,
+    imported: importedCount,
+    results,
+  };
+}
+
+async function syncProviderBackfillBatch(limit, providerName) {
+  return singleFlight(`backfill:${providerName}`, () =>
+    syncProviderBackfillBatchUnsafe(limit, providerName),
+  );
+}
+
+app.post("/api/v1/admin/sync-provider-backfill", async (req, res, next) => {
+  try {
+    if (!adminToken || req.get("x-admin-token") !== adminToken)
+      return res.status(401).json({ error: "Não autorizado" });
+    if (process.env.MANGAFLOW_ENABLE_SECONDARY_PROVIDER !== "true") {
+      return res.json({
+        status: "disabled",
+        message: "Sincronização de provedores secundários desativada por feature flag",
+      });
+    }
+    const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 50);
+    const providerName = req.query.provider || "comick";
+    res.json(await syncProviderBackfillBatch(limit, providerName));
   } catch (error) {
     next(error);
   }
