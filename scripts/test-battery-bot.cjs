@@ -832,6 +832,13 @@ test("V72", "Header & UX", "Sino de notificações não exibe badge falso quando
   assert.ok(!code.includes('span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary"'), "Não deve ter badge vermelho estático");
 });
 
+test("V73", "SSR & Resiliência", "Estado de offline inicializa como falso para não gerar banner espúrio no SSR", () => {
+  const rootPathFile = path.join(rootPath, "src", "routes", "__root.tsx");
+  const code = fs.readFileSync(rootPathFile, "utf-8");
+  assert.ok(code.includes("useState(false)"), "isOffline deve iniciar como false no servidor");
+  assert.ok(code.includes('typeof window === "undefined"'), "Deve proteger execução de listeners apenas para cliente");
+});
+
 // ===========================================================================
 // RELATÓRIO FINAL
 // ===========================================================================
