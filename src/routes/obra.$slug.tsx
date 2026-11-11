@@ -179,6 +179,11 @@ function Detail() {
         : "Ler capítulo disponível"
       : "";
   const inLibrary = entries.some((entry) => entry.slug === item.slug);
+  const displayTitle =
+    item.title && item.title !== "Sem título"
+      ? item.title
+      : item.alternativeTitle || item.title || "Sem título";
+  const displayAlternativeTitle = displayTitle === item.title ? item.alternativeTitle : undefined;
 
   return (
     <main className="pb-28">
@@ -199,7 +204,7 @@ function Detail() {
           {!coverError ? (
             <img
               src={item.cover}
-              alt={`Capa de ${item.title}`}
+              alt={`Capa de ${displayTitle}`}
               fetchPriority="high"
               decoding="async"
               width={440}
@@ -210,7 +215,9 @@ function Detail() {
           ) : (
             <div className="mx-auto flex aspect-[2/3] w-44 flex-col items-center justify-center rounded-2xl border border-border bg-surface p-4 text-center shadow-2xl sm:w-full">
               <BookOpen className="h-12 w-12 text-primary/50" />
-              <span className="mt-2 text-xs font-semibold text-muted-foreground">{item.title}</span>
+              <span className="mt-2 text-xs font-semibold text-muted-foreground">
+                {displayTitle}
+              </span>
             </div>
           )}
           <div className="self-end">
@@ -227,9 +234,11 @@ function Detail() {
               </span>
               <span className="tag">{item.status}</span>
             </div>
-            <h1 className="mt-4 font-display text-4xl font-extrabold sm:text-5xl">{item.title}</h1>
-            {item.alternativeTitle && (
-              <p className="text-muted-foreground">{item.alternativeTitle}</p>
+            <h1 className="mt-4 font-display text-4xl font-extrabold sm:text-5xl">
+              {displayTitle}
+            </h1>
+            {displayAlternativeTitle && (
+              <p className="text-muted-foreground">{displayAlternativeTitle}</p>
             )}
             <div className="mt-4 flex flex-wrap gap-4 text-sm">
               {item.rating !== null && (

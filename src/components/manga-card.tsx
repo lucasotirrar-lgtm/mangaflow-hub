@@ -16,6 +16,10 @@ export function MangaCard({ manga }: { manga: CatalogItem }) {
   const { adultEnabled } = useAdultContent();
   const inLibrary = entries.some((entry) => entry.slug === manga.slug);
   if (manga.ageRating === "18+" && !adultEnabled) return null;
+  const displayTitle =
+    manga.title && manga.title !== "Sem título"
+      ? manga.title
+      : manga.alternativeTitle || manga.title || "Sem título";
   const open = () =>
     guard(manga.ageRating === "18+", () =>
       navigate({ to: "/obra/$slug", params: { slug: manga.slug } }),
@@ -35,7 +39,7 @@ export function MangaCard({ manga }: { manga: CatalogItem }) {
         {!imgError ? (
           <img
             src={manga.cover}
-            alt={`Capa de ${manga.title}`}
+            alt={`Capa de ${displayTitle}`}
             loading="lazy"
             decoding="async"
             width={640}
@@ -47,7 +51,7 @@ export function MangaCard({ manga }: { manga: CatalogItem }) {
           <div className="flex aspect-[2/3] w-full flex-col items-center justify-center bg-gradient-to-br from-surface to-surface-2 p-3 text-center">
             <BookOpen className="h-8 w-8 text-primary/40" />
             <span className="mt-2 line-clamp-2 text-[11px] font-semibold text-muted-foreground">
-              {manga.title}
+              {displayTitle}
             </span>
           </div>
         )}
@@ -81,7 +85,7 @@ export function MangaCard({ manga }: { manga: CatalogItem }) {
           className="min-w-0 flex-1 text-left"
         >
           <h3 className="line-clamp-2 font-display text-sm font-bold group-hover:text-primary">
-            {manga.title}
+            {displayTitle}
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
             {manga.latestChapter > 0 ? `Cap. ${manga.latestChapter} · ` : "Capítulo disponível · "}

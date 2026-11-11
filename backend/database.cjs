@@ -222,6 +222,37 @@ async function initialize() {
   );
   await run("CREATE INDEX IF NOT EXISTS chapter_schedule_idx ON work_sync_state(next_check_at)");
   await run("CREATE INDEX IF NOT EXISTS sync_runs_started_idx ON sync_runs(started_at)");
+
+  await run(`UPDATE works
+    SET title = alternative_title,
+        alternative_title = NULL,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE title = 'Sem título'
+      AND alternative_title IS NOT NULL
+      AND alternative_title != ''`);
+
+  const explicitMissingTitles = [
+    ["c04007fa-fba6-4e19-a72c-6bc832d0479e", "Cheese in the Trap", "チーズ・イン・ザ・トラップ"],
+    ["370c7884-6f7d-4f4a-8c9b-cf66aca9f53a", "Risou no Kareshi no Hazunanoni", null],
+    ["f27d2f93-577f-497d-8e96-80278bf93618", "Dragon Ego", null],
+    ["22cb8236-187b-4853-b2c9-4aa69bf2589b", "La Mosca", null],
+    ["3beb945e-8364-4684-971a-7d3b46404e3a", "Love My Boss' Wife", null],
+    ["a2f07125-b50f-4699-a005-b291c306e6a1", "Salty Sweet", null],
+    ["4c8edc06-dd43-4517-ad60-8188e6e87b5c", "To LOVE Ru -Trouble- Rito ☆ Slime", null],
+    ["206b25a1-f7c2-4234-84d0-732f9317740d", "Yǒu Shòu Xìhuà", "Yǒu Shòu Q&A"],
+    ["c9a8ffb7-682f-40e2-87fe-9537e8f425ea", "WEE!!!", null],
+    ["ef105a86-4b7e-4ac4-b45c-b7d83b8f5b5e", "Teto X Egen", "테토X에겐"],
+  ];
+  for (const [extId, title, alt] of explicitMissingTitles) {
+    await run(
+      `UPDATE works
+       SET title = ?,
+           alternative_title = ?,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE external_id = ? AND title = 'Sem título'`,
+      [title, alt, extId],
+    );
+  }
 }
 
 module.exports = { all, dataDir, db, get, initialize, run };

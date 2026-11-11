@@ -7,6 +7,7 @@ const express = require("express");
 const { all, dataDir, get, initialize, run } = require("./database.cjs");
 const { fetchMangaDex } = require("./mangadex-client.cjs");
 const { createManifestLoader } = require("./chapter-manifest.cjs");
+const { extractMangaTitles } = require("./title-extractor.cjs");
 const {
   getProvider,
   matchWorkWithProvider,
@@ -286,13 +287,12 @@ async function upsertMangaDex(item) {
   ) {
     return { work: await get("SELECT * FROM works WHERE id = ?", [id]), changed: false };
   }
-  const titleResult = localizedValue(attrs.title, ["pt-br", "pt", "en", "ja-ro"], "Sem título");
+  const { title, titleLanguage, alternativeTitle } = extractMangaTitles(attrs);
   const synopsisResult = localizedValue(
     attrs.description,
     ["pt-br", "pt"],
     "Sinopse indisponível em português.",
   );
-  const title = titleResult.value;
   const adult = ["erotica", "pornographic"].includes(attrs.contentRating) ? 1 : 0;
   const kind =
     attrs.originalLanguage === "ko"
@@ -323,9 +323,7 @@ async function upsertMangaDex(item) {
       item.id,
       slugFor("mangadex", item.id, title),
       title,
-      (attrs.altTitles || [])
-        .map((value) => localizedValue(value, ["pt-br", "pt", "en", "ja-ro"]).value)
-        .find(Boolean) || null,
+      alternativeTitle,
       synopsisResult.value,
       cover ? `https://uploads.mangadex.org/covers/${item.id}/${cover}` : null,
       kind,
@@ -336,7 +334,7 @@ async function upsertMangaDex(item) {
       ),
       adult,
       providerUpdatedAt,
-      titleResult.language,
+      titleLanguage,
       synopsisResult.language,
     ],
   );
@@ -592,11 +590,18 @@ async function resolveChapterPageUrls(chapter) {
 }
 
 function serializeWork(work) {
+  const displayTitle =
+    work.title && work.title !== "Sem título"
+      ? work.title
+      : work.alternative_title || work.title || "Sem título";
+  const displayAlternativeTitle =
+    displayTitle === work.title ? work.alternative_title || undefined : undefined;
+
   return {
     id: work.id,
     slug: work.slug,
-    title: work.title,
-    alternativeTitle: work.alternative_title || undefined,
+    title: displayTitle,
+    alternativeTitle: displayAlternativeTitle,
     synopsis: work.synopsis,
     cover: `/api/v1/media/cover/${work.id}`,
     kind: work.kind === "manhua" ? "manga" : work.kind,
