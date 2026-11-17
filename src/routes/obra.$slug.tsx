@@ -20,6 +20,7 @@ import { useAgeGate } from "@/components/age-gate";
 import { useLocalLibrary } from "@/lib/local-library";
 import { useAdultContent } from "@/lib/adult-content";
 import { useReadingHistory } from "@/lib/reading-history";
+import { formatChapterLabel, formatReleaseDate } from "@/lib/format";
 
 export const Route = createFileRoute("/obra/$slug")({
   head: () => ({
@@ -33,19 +34,6 @@ export const Route = createFileRoute("/obra/$slug")({
   }),
   component: Detail,
 });
-
-function formatReleaseDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-}
-
-function formatChapterLabel(number: number) {
-  return number > 0 ? `Capítulo ${number}` : "Capítulo disponível";
-}
 
 function Detail() {
   const { slug } = Route.useParams();
@@ -350,7 +338,6 @@ function Detail() {
           {displayChapters.length ? (
             <div className="chapter-list">
               {displayChapters.map((chapter) => {
-                const workHistory = history.find((h) => h.slug === item.slug);
                 const isRead =
                   Boolean(workHistory) &&
                   (chapter.id === workHistory?.lastChapterId ||
@@ -449,7 +436,41 @@ function Detail() {
           )}
         </section>
         <aside>
-          <div className="side-card">
+          {/* Acordeão no mobile, sidebar normal no desktop */}
+          <details className="lg:hidden mb-4 rounded-2xl border border-border bg-surface overflow-hidden">
+            <summary className="cursor-pointer px-5 py-4 font-display font-bold text-sm select-none">
+              Sobre esta obra
+            </summary>
+            <div className="side-card border-t border-border rounded-none">
+              <dl className="space-y-3 text-sm">
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted-foreground">Formato</dt>
+                  <dd className="font-semibold">
+                    {item.kind === "light-novel"
+                      ? "Light novel"
+                      : item.kind === "manhwa"
+                        ? "Manhwa"
+                        : "Mangá"}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted-foreground">Idioma dos capítulos</dt>
+                  <dd className="font-semibold">Português (Brasil)</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted-foreground">Classificação</dt>
+                  <dd className="font-semibold">
+                    {item.ageRating === "Livre"
+                      ? "Livre"
+                      : item.ageRating === "18+"
+                        ? "18+"
+                        : `${item.ageRating}+`}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          </details>
+          <div className="side-card hidden lg:block">
             <h2>Sobre esta obra</h2>
             <dl className="mt-4 space-y-3 text-sm">
               <div className="flex justify-between gap-3">

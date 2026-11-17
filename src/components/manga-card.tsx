@@ -96,8 +96,8 @@ export function MangaCard({ manga }: { manga: CatalogItem }) {
           type="button"
           aria-label={
             inLibrary
-              ? `Remover ${manga.title} da biblioteca`
-              : `Salvar ${manga.title} na biblioteca`
+              ? `Remover ${displayTitle} da biblioteca`
+              : `Salvar ${displayTitle} na biblioteca`
           }
           aria-pressed={inLibrary}
           onClick={() => (inLibrary ? remove(manga.slug) : add(manga))}
@@ -129,17 +129,21 @@ export function SectionTitle({
   children,
   action,
   to,
+  eyebrow,
 }: {
   children: string;
   action?: string;
   to?: string;
+  eyebrow?: string;
 }) {
   return (
     <div className="mb-5 flex items-end justify-between gap-4">
       <div>
-        <span className="mb-1 block text-[11px] font-bold uppercase tracking-[.18em] text-primary">
-          Seleção Yae
-        </span>
+        {eyebrow && (
+          <span className="mb-1 block text-[11px] font-bold uppercase tracking-[.18em] text-primary">
+            {eyebrow}
+          </span>
+        )}
         <h2 className="font-display text-2xl font-extrabold sm:text-3xl">{children}</h2>
       </div>
       {action && to && (

@@ -33,6 +33,7 @@ function SearchPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(Boolean(q));
   const [failed, setFailed] = useState(false);
+  const SEARCH_PAGE_SIZE = 24;
   useEffect(() => setTerm(q), [q]);
   useEffect(() => {
     const value = q.trim();
@@ -64,7 +65,7 @@ function SearchPage() {
     event.preventDefault();
     navigate({ to: "/buscar", search: { q: term.trim(), page: 1 } });
   };
-  const totalPages = Math.max(1, Math.ceil(total / 24));
+  const totalPages = Math.max(1, Math.ceil(total / SEARCH_PAGE_SIZE));
   return (
     <main className="page-shell pb-28">
       <div className="page-heading">
@@ -103,7 +104,7 @@ function SearchPage() {
             }
           />
         ) : !q ? (
-          <div className="state-panel" role="status">
+          <div className="state-panel">
             <Search className="h-7 w-7 text-primary" />
             <h2>O que você deseja ler hoje?</h2>
             <p>
@@ -124,7 +125,7 @@ function SearchPage() {
             {totalPages > 1 && (
               <nav className="mt-10 flex justify-center gap-3" aria-label="Paginação da busca">
                 <button
-                  className="secondary-button"
+                  className="secondary-button disabled:cursor-not-allowed disabled:opacity-50 disabled:pointer-events-none"
                   disabled={page === 1}
                   onClick={() => navigate({ to: "/buscar", search: { q, page: page - 1 } })}
                 >
@@ -134,7 +135,7 @@ function SearchPage() {
                   Página {page} de {totalPages}
                 </span>
                 <button
-                  className="secondary-button"
+                  className="secondary-button disabled:cursor-not-allowed disabled:opacity-50 disabled:pointer-events-none"
                   disabled={page === totalPages}
                   onClick={() => navigate({ to: "/buscar", search: { q, page: page + 1 } })}
                 >

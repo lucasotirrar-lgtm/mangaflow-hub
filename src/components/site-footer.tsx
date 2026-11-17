@@ -25,7 +25,6 @@ const columns = [
       { label: "Configurações", to: "/configuracoes" },
       { label: "Perfil", to: "/perfil" },
       { label: "Entrar", to: "/auth" },
-      { label: "Administração", to: "/admin" },
     ],
   },
 ] as const;

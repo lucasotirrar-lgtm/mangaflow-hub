@@ -39,8 +39,12 @@
   --color-star: var(--star);
   --color-ongoing: var(--ongoing);
   --color-completed: var(--completed);
-  --font-display: "Segoe UI Variable Display", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Segoe UI Variable Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-display:
+    "Segoe UI Variable Display", "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-sans:
+    "Segoe UI Variable Text", "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
@@ -282,6 +286,12 @@ select {
   border: 1px solid var(--border);
   border-radius: 1.5rem;
   box-shadow: 0 24px 80px #0004;
+  min-height: 430px;
+}
+@media (min-width: 640px) {
+  .hero-panel {
+    min-height: 520px;
+  }
 }
 .eyebrow {
   display: inline-flex;
@@ -317,6 +327,7 @@ select {
 .secondary-button {
   display: inline-flex;
   min-height: 2.75rem;
+  min-width: 2.75rem;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
@@ -340,6 +351,11 @@ select {
 .secondary-button:hover {
   transform: translateY(-2px);
   border-color: var(--primary);
+}
+.primary-button:focus-visible,
+.secondary-button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 .primary-button svg,
 .secondary-button svg {
@@ -757,7 +773,7 @@ select {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(145deg, #181421, #0e0c13);
+  background: linear-gradient(145deg, var(--background), var(--surface));
   padding: 2rem;
   text-align: center;
 }
@@ -774,7 +790,7 @@ select {
 .reader-placeholder p {
   max-width: 34rem;
   margin-top: 1rem;
-  color: #aaa;
+  color: var(--muted-foreground);
 }
 .reader-placeholder.second {
   min-height: 60vh;

@@ -48,7 +48,7 @@ function toCard(entry: LocalLibraryEntry): CatalogItem {
   return {
     ...entry,
     id: entry.slug,
-    synopsis: "",
+    synopsis: (entry as unknown as { synopsis?: string }).synopsis ?? "",
     rating: null,
     year: null,
     genres: [],
@@ -391,7 +391,13 @@ export function AccountPage({ section }: { section: AccountSection }) {
           />
         )
       ) : section === "listas" || section === "notificacoes" ? (
-        <ProductState state="empty" />
+        <div className="state-panel text-center">
+          <span className="text-4xl mb-2 block" role="img" aria-label="Em construção">
+            🚧
+          </span>
+          <h2>Em breve</h2>
+          <p>Esta funcionalidade está sendo preparada para as próximas atualizações.</p>
+        </div>
       ) : section === "configuracoes" ? (
         <ConfigSection />
       ) : section === "perfil" ? (

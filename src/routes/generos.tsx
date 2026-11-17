@@ -23,6 +23,8 @@ export const Route = createFileRoute("/generos")({
 });
 
 function GenerosPage() {
+  // NOTA: Esta rota utiliza useQuery (React Query) para CMS, enquanto outras rotas utilizam
+  // useEffect + catalogService. Mantido intencionalmente para evitar regressão na renderização de CMS.
   const { data: rows } = useQuery({ queryKey: ["cms", "generos"], queryFn: fetchGeneros });
   const generos =
     rows && rows.length > 0

@@ -125,7 +125,7 @@ function Home() {
         </div>
       </section>
       <section>
-        <SectionTitle action="Ver catálogo" to="/mangas">
+        <SectionTitle eyebrow="Seleção Yae" action="Ver catálogo" to="/mangas">
           Lançamentos recentes
         </SectionTitle>
         <div className="catalog-grid">
@@ -153,7 +153,7 @@ function Home() {
         </Link>
       </section>
       <section>
-        <SectionTitle action="Descobrir mais" to="/descobrir">
+        <SectionTitle eyebrow="Atualizado hoje" action="Descobrir mais" to="/descobrir">
           Atualizados recentemente
         </SectionTitle>
         <div className="catalog-grid">

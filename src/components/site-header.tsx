@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   Bell,
   BookMarked,
@@ -28,10 +28,31 @@ const nav = [
 ];
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open]);
   const [dark, setDark] = useState(true);
   const [query, setQuery] = useState("");
   const { adultEnabled } = useAdultContent();
   const navigate = useNavigate();
+
+  const urlQuery = useRouterState({
+    select: (state) => {
+      const search = state.location.search as Record<string, unknown> | undefined;
+      return typeof search?.["q"] === "string" ? (search["q"] as string) : "";
+    },
+  });
+
+  useEffect(() => {
+    if (urlQuery) {
+      setQuery(urlQuery);
+    }
+  }, [urlQuery]);
   useEffect(() => {
     const stored = safeStorage.getItem("yae-theme");
     const value = stored ? stored === "dark" : true;
@@ -58,7 +79,7 @@ export function SiteHeader() {
               Yae <span className="text-gradient">House</span>
             </span>
           </Link>
-          <nav className="hidden items-center gap-1 lg:flex">
+          <nav aria-label="Navegação principal" className="hidden items-center gap-1 lg:flex">
             {nav.slice(0, 3).map(({ to, label }) => (
               <Link
                 key={to}
@@ -84,6 +105,7 @@ export function SiteHeader() {
             <button
               onClick={toggle}
               aria-label={dark ? "Ativar tema claro" : "Ativar tema escuro"}
+              title={dark ? "Mudar para tema claro" : "Mudar para tema escuro"}
               className="icon-button"
             >
               {dark ? <Sun /> : <Moon />}
@@ -104,12 +126,13 @@ export function SiteHeader() {
           </div>
         </div>
         {open && (
-          <nav className="border-t border-border p-3 lg:hidden">
+          <nav aria-label="Menu mobile" className="border-t border-border p-3 lg:hidden">
             <form onSubmit={submit} className="relative mb-3 md:hidden">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                aria-label="Buscar no catálogo"
                 placeholder="Buscar no catálogo"
                 className="w-full rounded-xl border bg-surface py-3 pl-10 pr-3"
               />

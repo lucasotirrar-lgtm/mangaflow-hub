@@ -240,7 +240,7 @@ function CatalogPagination({
     >
       <button
         type="button"
-        className="secondary-button disabled:cursor-not-allowed disabled:opacity-50"
+        className="secondary-button disabled:cursor-not-allowed disabled:opacity-50 disabled:pointer-events-none"
         onClick={() => goToPage(1)}
         disabled={page === 1}
       >
@@ -248,7 +248,7 @@ function CatalogPagination({
       </button>
       <button
         type="button"
-        className="secondary-button disabled:cursor-not-allowed disabled:opacity-50"
+        className="secondary-button disabled:cursor-not-allowed disabled:opacity-50 disabled:pointer-events-none"
         onClick={() => goToPage(page - 1)}
         disabled={page === 1}
       >
@@ -258,7 +258,7 @@ function CatalogPagination({
         <button
           key={number}
           type="button"
-          className="secondary-button min-w-10 disabled:cursor-not-allowed disabled:opacity-50"
+          className="secondary-button min-w-10 disabled:cursor-not-allowed disabled:opacity-50 disabled:pointer-events-none"
           onClick={() => goToPage(number)}
           disabled={number === page}
           aria-current={number === page ? "page" : undefined}
@@ -271,7 +271,7 @@ function CatalogPagination({
       </span>
       <button
         type="button"
-        className="secondary-button disabled:cursor-not-allowed disabled:opacity-50"
+        className="secondary-button disabled:cursor-not-allowed disabled:opacity-50 disabled:pointer-events-none"
         onClick={() => goToPage(page + 1)}
         disabled={page === totalPages}
       >
@@ -279,7 +279,7 @@ function CatalogPagination({
       </button>
       <button
         type="button"
-        className="secondary-button disabled:cursor-not-allowed disabled:opacity-50"
+        className="secondary-button disabled:cursor-not-allowed disabled:opacity-50 disabled:pointer-events-none"
         onClick={() => goToPage(totalPages)}
         disabled={page === totalPages}
       >

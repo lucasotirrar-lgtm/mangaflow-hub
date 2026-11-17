@@ -4,7 +4,12 @@ import type { AsyncState } from "@/types/content";
 
 export function CatalogSkeleton({ count = 6 }: { count?: number }) {
   return (
-    <div aria-label="Carregando catálogo" className="catalog-grid">
+    <div
+      aria-live="polite"
+      aria-busy="true"
+      aria-label="Carregando catálogo..."
+      className="catalog-grid"
+    >
       {Array.from({ length: count }, (_, i) => (
         <div key={i}>
           <Skeleton className="aspect-[2/3] w-full rounded-2xl" />
